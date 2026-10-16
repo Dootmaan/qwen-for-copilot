@@ -1,0 +1,52 @@
+{
+  "qwen-copilot.command.setApiKey": "Qwen: 设置 API 密钥",
+  "qwen-copilot.command.getApiKey": "Qwen: 获取 API 密钥",
+  "qwen-copilot.command.clearApiKey": "Qwen: 清除 API 密钥",
+  "qwen-copilot.command.openSettings": "Qwen: 打开设置",
+  "qwen-copilot.command.showLogs": "Qwen: 显示日志",
+  "qwen-copilot.command.refreshUsage": "Qwen: 刷新用量",
+  "qwen-copilot.command.openUsageDetail": "Qwen: 显示用量详情",
+
+  "qwen-copilot.walkthrough.title": "Qwen Models for GitHub Copilot Chat",
+  "qwen-copilot.walkthrough.description": "在 GitHub Copilot Chat 中使用 Qwen 模型。",
+
+  "qwen-copilot.walkthrough.setApiKey.title": "设置 Qwen API 密钥",
+  "qwen-copilot.walkthrough.setApiKey.description": "[获取 API 密钥](command:qwen-copilot.getApiKey)（来自千问AI平台 Token Plan 或阿里云百炼）。\n[设置 API 密钥](command:qwen-copilot.setApiKey)",
+
+  "qwen-copilot.walkthrough.chooseApi.title": "选择 Qwen API 模式",
+  "qwen-copilot.walkthrough.chooseApi.description": "选择 Token Plan 或标准按量 API 模式。\n[打开设置](command:qwen-copilot.openSettings)",
+
+  "qwen-copilot.walkthrough.showModels.title": "在选择器中查看 Qwen 模型",
+  "qwen-copilot.walkthrough.showModels.description": "你的 Qwen 模型将根据所选的 API 模式出现在 Copilot Chat 的模型选择器中。如果看不到，请打开语言模型管理器以显示它们。\n[打开语言模型](command:workbench.action.chat.manage)",
+
+  "qwen-copilot.config.title": "Qwen Models for GitHub Copilot Chat",
+
+  "qwen-copilot.config.apiMode.description": "选择要使用的 Qwen API 模式。\n\n- **编程计划** — 使用 Qwen Token Plan 订阅。\n- **标准 API** — 使用 DashScope 按量计费。\n\n两个模式默认都走 OpenAI 兼容端点，也可以通过 `baseUrl` 自定义。",
+  "qwen-copilot.config.apiMode.codingPlan.label": "编程计划",
+  "qwen-copilot.config.apiMode.codingPlan.description": "使用 Qwen Token Plan 订阅。默认端点：`token-plan.maas.qianwenaiapi.com/compatible-mode/v1`。",
+  "qwen-copilot.config.apiMode.standard.label": "标准 API",
+  "qwen-copilot.config.apiMode.standard.description": "通过 DashScope 按量付费访问。若设置了 `baseUrl`，则优先使用 `baseUrl`。",
+
+  "qwen-copilot.config.region.description": "默认端点区域（设置 `baseUrl` 时忽略）。\n\n- **国际版** — Token Plan: `token-plan.maas.qianwenaiapi.com/compatible-mode/v1`；标准: `dashscope-intl.aliyuncs.com/compatible-mode/v1`\n- **中国大陆** — Token Plan: `token-plan.maas.qianwenaiapi.com/compatible-mode/v1`；标准: `dashscope.aliyuncs.com/compatible-mode/v1`",
+  "qwen-copilot.config.region.international.label": "国际版",
+  "qwen-copilot.config.region.china.label": "中国大陆",
+
+  "qwen-copilot.config.baseUrl.description": "覆盖 Qwen API 的基础 URL。设置后将直接使用此值，`apiMode` 和 `region` 均被忽略。适用于自托管代理或兼容的第三方端点。",
+
+  "qwen-copilot.config.maxTokens.description": "每次请求的最大输出 token 数。设为 `0` 表示使用 API 默认值（不限制）。可用于控制费用。",
+
+  "qwen-copilot.config.maxRetries.description": "对瞬时失败（HTTP 429 限流和 5xx 服务器错误）的最大自动重试次数（不含首次请求）。设为 `0` 可关闭自动重试、失败时立即报错。重试采用指数退避，并遵循服务器返回的 `Retry-After`。",
+
+  "qwen-copilot.config.modelIdOverrides.description": "重映射内置模型的 API ID。键是模型选择器中的 ID（例如 `qwen-plus`），值是实际发送到 API 的模型 ID。适用于代理或企业网关中的模型别名。",
+  "qwen-copilot.config.customModels.description": "向选择器添加自定义模型。每个条目可以是模型 ID 字符串（例如 `\"qwen-plus\"`），也可以是对象（例如 `{ \"id\": \"my-model\", \"name\": \"My Model\" }`）。自定义模型始终会显示在选择器中。",
+  "qwen-copilot.config.enableModelDiscovery.description": "自动从当前端点的 `GET /models` 发现可用模型 ID，并显示在模型选择器中。",
+
+  "qwen-copilot.config.thinking.description": "Qwen 在回答前是否进行逐步推理。仅对支持思考的模型生效。\n\n- **开启** — 在复杂编码与智能体任务上质量更高（速度较慢）。\n- **关闭** — 简单修改时响应更快。",
+  "qwen-copilot.config.thinking.enabled.label": "开启",
+  "qwen-copilot.config.thinking.disabled.label": "关闭",
+
+  "qwen-copilot.config.debugLogging.description": "启用详细调试日志，输出到 Qwen 输出频道。使用 [`Qwen: 显示日志`](command:qwen-copilot.showLogs) 查看。日志包含请求元数据，但不包含提示词文本。",
+  "qwen-copilot.config.usageRefreshIntervalMinutes.description": "Qwen 用量状态刷新间隔（分钟），最小值 1，最大值 1440（24 小时）。",
+  "qwen-copilot.config.showUsageStatusBar.description": "是否显示 Qwen 用量状态栏。",
+  "qwen-copilot.config.tokenPlanStatsEndpoint.description": "可选：覆盖 Token Plan 用量接口地址。留空时，插件会尝试内置的多个候选地址。"
+}
