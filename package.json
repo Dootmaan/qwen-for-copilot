@@ -1,0 +1,301 @@
+{
+	"name": "qwen-for-github-copilot-chat",
+	"displayName": "Qwen Models for GitHub Copilot Chat",
+	"description": "Bring Qwen Token Plan and DashScope models into GitHub Copilot Chat with bilingual UX and quota visibility.",
+	"icon": "resources/icon.png",
+	"version": "0.1.5",
+	"publisher": "Dootmaan",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Dootmaan/qwen-for-copilot.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Dootmaan/qwen-for-copilot/issues"
+	},
+	"homepage": "https://github.com/Dootmaan/qwen-for-copilot#readme",
+	"qna": "https://github.com/Dootmaan/qwen-for-copilot/issues",
+	"engines": {
+		"vscode": "^1.116.0",
+		"node": ">=20"
+	},
+	"categories": [
+		"AI",
+		"Chat",
+		"Programming Languages"
+	],
+	"keywords": [
+		"qwen",
+		"qwen3-coder-plus",
+		"qwen-plus",
+		"qwen-max",
+		"qwen-turbo",
+		"dashscope",
+		"token plan",
+		"bailian",
+		"copilot",
+		"github copilot",
+		"copilot chat",
+		"byok",
+		"language model",
+		"thinking",
+		"reasoning",
+		"coding plan",
+		"ai",
+		"chat"
+	],
+	"activationEvents": [
+		"onUri",
+		"onStartupFinished"
+	],
+	"enabledApiProposals": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"languageModelChatProviders": [
+			{
+				"vendor": "qwen-copilot",
+				"displayName": "Qwen",
+				"managementCommand": "qwen-copilot.openSettings"
+			}
+		],
+		"commands": [
+			{
+				"command": "qwen-copilot.setApiKey",
+				"title": "%qwen-copilot.command.setApiKey%"
+			},
+			{
+				"command": "qwen-copilot.getApiKey",
+				"title": "%qwen-copilot.command.getApiKey%"
+			},
+			{
+				"command": "qwen-copilot.clearApiKey",
+				"title": "%qwen-copilot.command.clearApiKey%"
+			},
+			{
+				"command": "qwen-copilot.openSettings",
+				"title": "%qwen-copilot.command.openSettings%"
+			},
+			{
+				"command": "qwen-copilot.showLogs",
+				"title": "%qwen-copilot.command.showLogs%"
+			},
+			{
+				"command": "qwen-copilot.refreshUsage",
+				"title": "%qwen-copilot.command.refreshUsage%"
+			},
+			{
+				"command": "qwen-copilot.openUsageDetail",
+				"title": "%qwen-copilot.command.openUsageDetail%"
+			}
+		],
+		"walkthroughs": [
+			{
+				"id": "qwenGettingStarted",
+				"title": "%qwen-copilot.walkthrough.title%",
+				"description": "%qwen-copilot.walkthrough.description%",
+				"steps": [
+					{
+						"id": "setApiKey",
+						"title": "%qwen-copilot.walkthrough.setApiKey.title%",
+						"description": "%qwen-copilot.walkthrough.setApiKey.description%",
+						"media": {
+							"markdown": "resources/walkthrough/set-api-key.md"
+						},
+						"completionEvents": [
+							"onCommand:qwen-copilot.setApiKey"
+						]
+					},
+					{
+						"id": "chooseApi",
+						"title": "%qwen-copilot.walkthrough.chooseApi.title%",
+						"description": "%qwen-copilot.walkthrough.chooseApi.description%",
+						"media": {
+							"markdown": "resources/walkthrough/choose-api.md"
+						}
+					},
+					{
+						"id": "showModels",
+						"title": "%qwen-copilot.walkthrough.showModels.title%",
+						"description": "%qwen-copilot.walkthrough.showModels.description%",
+						"media": {
+							"markdown": "resources/walkthrough/show-models.md"
+						}
+					}
+				]
+			}
+		],
+		"configuration": {
+			"title": "%qwen-copilot.config.title%",
+			"properties": {
+				"qwen-copilot.apiMode": {
+					"type": "string",
+					"default": "coding-plan",
+					"enum": [
+						"coding-plan",
+						"standard"
+					],
+					"enumItemLabels": [
+						"%qwen-copilot.config.apiMode.codingPlan.label%",
+						"%qwen-copilot.config.apiMode.standard.label%"
+					],
+					"markdownEnumDescriptions": [
+						"%qwen-copilot.config.apiMode.codingPlan.description%",
+						"%qwen-copilot.config.apiMode.standard.description%"
+					],
+					"markdownDescription": "%qwen-copilot.config.apiMode.description%"
+				},
+				"qwen-copilot.region": {
+					"type": "string",
+					"default": "international",
+					"enum": [
+						"international",
+						"china"
+					],
+					"enumItemLabels": [
+						"%qwen-copilot.config.region.international.label%",
+						"%qwen-copilot.config.region.china.label%"
+					],
+					"markdownDescription": "%qwen-copilot.config.region.description%"
+				},
+				"qwen-copilot.baseUrl": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "%qwen-copilot.config.baseUrl.description%"
+				},
+				"qwen-copilot.maxTokens": {
+					"type": "number",
+					"default": 0,
+					"minimum": 0,
+					"description": "%qwen-copilot.config.maxTokens.description%"
+				},
+				"qwen-copilot.maxRetries": {
+					"type": "integer",
+					"default": 3,
+					"minimum": 0,
+					"maximum": 10,
+					"markdownDescription": "%qwen-copilot.config.maxRetries.description%"
+				},
+				"qwen-copilot.modelIdOverrides": {
+					"type": "object",
+					"default": {},
+					"additionalProperties": {
+						"type": "string"
+					},
+					"markdownDescription": "%qwen-copilot.config.modelIdOverrides.description%"
+				},
+				"qwen-copilot.customModels": {
+					"type": "array",
+					"default": [],
+					"markdownDescription": "%qwen-copilot.config.customModels.description%",
+					"items": {
+						"anyOf": [
+							{
+								"type": "string",
+								"description": "A Qwen API model id to add to the picker."
+							},
+							{
+								"type": "object",
+								"required": [
+									"id"
+								],
+								"additionalProperties": false,
+								"properties": {
+									"id": {
+										"type": "string",
+										"description": "API model id sent to Qwen (required)."
+									},
+									"name": {
+										"type": "string",
+										"description": "Display name in the model picker. Defaults to the id."
+									},
+									"maxInputTokens": {
+										"type": "number",
+										"description": "Max input tokens. Defaults to 200000."
+									},
+									"maxOutputTokens": {
+										"type": "number",
+										"description": "Max output tokens. Defaults to 128000."
+									},
+									"toolCalling": {
+										"type": "boolean",
+										"description": "Whether the model supports tool calling. Defaults to true."
+									},
+									"vision": {
+										"type": "boolean",
+										"description": "Whether the model accepts image input. Defaults to false."
+									},
+									"thinking": {
+										"type": "boolean",
+										"description": "Whether the model supports thinking. Defaults to true."
+									}
+								}
+							}
+						]
+					}
+				},
+				"qwen-copilot.enableModelDiscovery": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "%qwen-copilot.config.enableModelDiscovery.description%"
+				},
+				"qwen-copilot.thinking": {
+					"type": "string",
+					"default": "enabled",
+					"enum": [
+						"enabled",
+						"disabled"
+					],
+					"enumItemLabels": [
+						"%qwen-copilot.config.thinking.enabled.label%",
+						"%qwen-copilot.config.thinking.disabled.label%"
+					],
+					"markdownDescription": "%qwen-copilot.config.thinking.description%"
+				},
+				"qwen-copilot.debugLogging": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "%qwen-copilot.config.debugLogging.description%"
+				},
+				"qwen-copilot.usageRefreshIntervalMinutes": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 1440,
+					"markdownDescription": "%qwen-copilot.config.usageRefreshIntervalMinutes.description%"
+				},
+				"qwen-copilot.showUsageStatusBar": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "%qwen-copilot.config.showUsageStatusBar.description%"
+				},
+				"qwen-copilot.tokenPlanStatsEndpoint": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "%qwen-copilot.config.tokenPlanStatsEndpoint.description%"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "pnpm run compile",
+		"clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\"",
+		"compile": "pnpm run clean && tsc -p ./",
+		"typecheck": "tsc --noEmit -p ./",
+		"lint": "eslint .",
+		"watch": "tsc -watch -p ./",
+		"package": "vsce package -o dist/",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^20.0.0",
+		"@types/vscode": "^1.116.0",
+		"@vscode/vsce": "^3.2.0",
+		"eslint": "^10.5.0",
+		"globals": "^17.7.0",
+		"typescript": "^5.6.0",
+		"typescript-eslint": "^8.62.0",
+		"vitest": "^4.1.9"
+	}
+}

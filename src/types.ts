@@ -1,0 +1,221 @@
+import type * as vscode from 'vscode';
+
+export type ThinkingMode = 'enabled' | 'disabled';
+export type ApiMode = 'coding-plan' | 'standard';
+export type Region = 'international' | 'china';
+
+export type ThinkingEffort = 'none' | 'high' | 'max';
+
+export interface ThinkingEffortSpec {
+	/** Levels shown in the picker, in order. */
+	levels: ThinkingEffort[];
+	/** Level used when the user has not chosen one. */
+	default: ThinkingEffort;
+}
+
+export interface QwenModelCapabilities {
+	/** `true` enables tool calling with the default cap; a number sets a custom cap. */
+	toolCalling: number | boolean;
+	imageInput: boolean;
+	thinking: boolean;
+	/** Present ⇒ model supports thinking-effort selection. Absent ⇒ binary thinking only. */
+	thinkingEffort?: ThinkingEffortSpec;
+}
+
+/** A Qwen model exposed in the Copilot Chat picker. */
+export interface QwenModel {
+	id: string;
+	name: string;
+	family: string;
+	version: string;
+	detail: string;
+	maxInputTokens: number;
+	maxOutputTokens: number;
+	capabilities: QwenModelCapabilities;
+	/** API modes that expose this model. The picker filters built-ins by the active mode. */
+	availableIn: ApiMode[];
+}
+
+/** A user-defined model from the `customModels` setting (string id or object). */
+export interface CustomModelConfig {
+	id: string;
+	name?: string;
+	maxInputTokens?: number;
+	maxOutputTokens?: number;
+	toolCalling?: boolean;
+	vision?: boolean;
+	thinking?: boolean;
+}
+
+// ---- Usage tracking (Coding Plan quota + Standard API balance) ----
+
+export type UsageMetricKind = 'session' | 'weekly' | 'web-searches';
+
+export interface UsageMetric {
+	kind: UsageMetricKind;
+	/** Percentage (0-100) for session/weekly; count used for web-searches. */
+	used: number;
+	/** 100 for session/weekly; monthly total for web-searches. */
+	limit: number;
+	/** Epoch-ms when the window resets. */
+	resetsAt?: number;
+}
+
+/** A token resource package on the China Standard API (pay-as-you-go). */
+export interface TokenPackage {
+	name: string;
+	/** Remaining tokens in this package. */
+	remainingTokens: number;
+	/** Magnitude divisor (e.g. 1000 = thousands). */
+	magnitude: number;
+	/** Package status (e.g. "EFFECTIVE"). */
+	status: string;
+	/** Model this package is valid for, if any. */
+	model?: string;
+}
+
+/** Cash + token-package balance for the Standard API. */
+export interface UsageBalance {
+	/** Available cash balance (after deducting spent + frozen). */
+	availableCash?: number;
+	/** Total amount recharged by the user. */
+	totalRecharged?: number;
+	/** Total amount spent so far. */
+	totalSpent?: number;
+	/** Gifted/promotional amount. */
+	giftedAmount?: number;
+	/** Frozen (held) amount. */
+	frozenAmount?: number;
+	/** Active token resource packages. */
+	tokenPackages: TokenPackage[];
+}
+
+export type UsageStatus =
+	| 'ok'
+	| 'no-data'
+	| 'auth-error'
+	| 'network-error'
+	| 'server-error'
+	| 'loading';
+
+export interface UsageSnapshot {
+	status: UsageStatus;
+	planName?: string;
+	/** ISO date string from the subscription response. */
+	renewsAt?: string;
+	/** 0..3 metrics, ordered session, weekly, web-searches. Coding Plan only. */
+	metrics: UsageMetric[];
+	/** Cash + token-package balance. Standard API only. */
+	balance?: UsageBalance;
+	/** Epoch-ms of the fetch that produced this snapshot. */
+	fetchedAt: number;
+}
+
+// ---- OpenAI-compatible wire types ----
+
+export interface QwenToolFunction {
+	name: string;
+	description?: string;
+	parameters?: unknown;
+}
+
+export interface QwenTool {
+	type: 'function';
+	function: QwenToolFunction;
+}
+
+export interface QwenToolCall {
+	id: string;
+	type: 'function';
+	function: { name: string; arguments: string };
+}
+
+export interface QwenMessage {
+	role: 'system' | 'user' | 'assistant' | 'tool';
+	content: string;
+	tool_calls?: QwenToolCall[];
+	tool_call_id?: string;
+	reasoning_content?: string;
+}
+
+export interface QwenChatRequest {
+	model: string;
+	messages: QwenMessage[];
+	stream: boolean;
+	tools?: QwenTool[];
+	tool_choice?: 'auto' | 'none';
+	max_tokens?: number;
+	thinking?: { type: ThinkingMode };
+	/** Qwen's native thinking toggle (DashScope `enable_thinking`); kept in sync with `thinking`. */
+	enable_thinking?: boolean;
+	reasoning_effort?: Exclude<ThinkingEffort, 'none'>;
+	stream_options?: { include_usage: boolean };
+}
+
+export interface QwenUsage {
+	prompt_tokens?: number;
+	completion_tokens?: number;
+	total_tokens?: number;
+	prompt_tokens_details?: { cached_tokens?: number };
+}
+
+// ---- Streaming delta shapes ----
+
+export interface QwenDeltaToolCall {
+	index: number;
+	id?: string;
+	type?: 'function';
+	function?: { name?: string; arguments?: string };
+}
+
+export interface QwenDelta {
+	content?: string;
+	reasoning_content?: string;
+	tool_calls?: QwenDeltaToolCall[];
+}
+
+export interface QwenChoice {
+	delta?: QwenDelta;
+	finish_reason?: string | null;
+}
+
+export interface QwenStreamChunk {
+	choices?: QwenChoice[];
+	usage?: QwenUsage;
+}
+
+// ---- Callback + collaborator contracts ----
+
+export interface RetryBackoffInfo {
+	status: number;
+	nextAttempt: number;
+	maxAttempts: number;
+	delayMs: number;
+}
+
+export interface StreamCallbacks {
+	onContent: (content: string) => void;
+	onThinking: (text: string) => void;
+	onToolCall: (toolCall: QwenToolCall) => void;
+	onUsage?: (usage: QwenUsage) => void;
+	onRetryBackoff?: (info: RetryBackoffInfo) => void;
+	onDone: () => void;
+	onError: (error: unknown) => void;
+}
+
+/** Streaming Qwen chat client. Implemented by `client/core.ts`. */
+export interface IQwenClient {
+	streamChatCompletion(
+		request: QwenChatRequest,
+		callbacks: StreamCallbacks,
+		cancellationToken?: vscode.CancellationToken,
+	): Promise<void>;
+}
+
+/** API-key manager. Implemented by `auth.ts`. */
+export interface IAuthManager {
+	getApiKey(): Promise<string | undefined>;
+	hasApiKey(): Promise<boolean>;
+	promptForApiKey(): Promise<boolean>;
+	deleteApiKey(): Promise<void>;
+}

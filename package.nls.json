@@ -1,0 +1,52 @@
+{
+  "qwen-copilot.command.setApiKey": "Qwen: Set API Key",
+  "qwen-copilot.command.getApiKey": "Qwen: Get API Key",
+  "qwen-copilot.command.clearApiKey": "Qwen: Clear API Key",
+  "qwen-copilot.command.openSettings": "Qwen: Open Settings",
+  "qwen-copilot.command.showLogs": "Qwen: Show Logs",
+  "qwen-copilot.command.refreshUsage": "Qwen: Refresh Usage",
+  "qwen-copilot.command.openUsageDetail": "Qwen: Show Usage Details",
+
+  "qwen-copilot.walkthrough.title": "Qwen Models for GitHub Copilot Chat",
+  "qwen-copilot.walkthrough.description": "Set up Qwen models in GitHub Copilot Chat.",
+
+  "qwen-copilot.walkthrough.setApiKey.title": "Set your Qwen API key",
+  "qwen-copilot.walkthrough.setApiKey.description": "[Get an API key](command:qwen-copilot.getApiKey) from Qwen AI Platform Token Plan or Alibaba Cloud Bailian.\n[Set API Key](command:qwen-copilot.setApiKey)",
+
+  "qwen-copilot.walkthrough.chooseApi.title": "Choose your Qwen API",
+  "qwen-copilot.walkthrough.chooseApi.description": "Select between Token Plan and standard pay-as-you-go API mode.\n[Open settings](command:qwen-copilot.openSettings)",
+
+  "qwen-copilot.walkthrough.showModels.title": "Show Qwen models in the picker",
+  "qwen-copilot.walkthrough.showModels.description": "Your Qwen models appear in the Copilot Chat model picker, filtered by your selected API Mode. If they are hidden, open the Language Models manager to show them.\n[Open Language Models](command:workbench.action.chat.manage)",
+
+  "qwen-copilot.config.title": "Qwen Models for GitHub Copilot Chat",
+
+  "qwen-copilot.config.apiMode.description": "Which Qwen API mode to use.\n\n- **Coding Plan** — use your Qwen Token Plan subscription.\n- **Standard API** — use DashScope pay-as-you-go access.\n\nBoth modes use OpenAI-compatible endpoints by default and can be overridden with `baseUrl`.",
+  "qwen-copilot.config.apiMode.codingPlan.label": "Coding Plan",
+  "qwen-copilot.config.apiMode.codingPlan.description": "Use your Qwen Token Plan subscription. Default endpoint: `token-plan.maas.qianwenaiapi.com/compatible-mode/v1`.",
+  "qwen-copilot.config.apiMode.standard.label": "Standard API",
+  "qwen-copilot.config.apiMode.standard.description": "Pay-as-you-go access via DashScope. The active endpoint is chosen by `region` unless `baseUrl` is set.",
+
+  "qwen-copilot.config.region.description": "Server region for default endpoints (ignored when `baseUrl` is set).\n\n- **International** — Token Plan: `token-plan.maas.qianwenaiapi.com/compatible-mode/v1`; Standard: `dashscope-intl.aliyuncs.com/compatible-mode/v1`\n- **Mainland China** — Token Plan: `token-plan.maas.qianwenaiapi.com/compatible-mode/v1`; Standard: `dashscope.aliyuncs.com/compatible-mode/v1`",
+  "qwen-copilot.config.region.international.label": "International",
+  "qwen-copilot.config.region.china.label": "Mainland China",
+
+  "qwen-copilot.config.baseUrl.description": "Override the Qwen API base URL. When set, this value is used verbatim and both `apiMode` and `region` are ignored. Use this for self-hosted proxies or compatible third-party endpoints.",
+
+  "qwen-copilot.config.maxTokens.description": "Maximum number of output tokens per request. Set to `0` to use the API default (no explicit limit). Useful for controlling costs.",
+
+  "qwen-copilot.config.maxRetries.description": "Maximum automatic retries for transient chat failures (HTTP 429 rate limits and 5xx server errors), not counting the initial attempt. Set to `0` to disable automatic retries and fail fast. Retries wait with exponential backoff and honor the server's `Retry-After` header.",
+
+  "qwen-copilot.config.modelIdOverrides.description": "Remap a built-in model id sent to the API. Keys are picker ids (for example `qwen-plus`), values are API ids. Use this for proxy/workspace-specific model aliases.",
+  "qwen-copilot.config.customModels.description": "Add custom models to the picker. Each entry is either a model id string (for example `\"qwen-plus\"`) or an object like `{ \"id\": \"my-model\", \"name\": \"My Model\" }`. Custom models always appear in the picker.",
+  "qwen-copilot.config.enableModelDiscovery.description": "Automatically discover available model IDs from the current endpoint (`GET /models`) and show them in the model picker.",
+
+  "qwen-copilot.config.thinking.description": "Whether Qwen uses step-by-step reasoning before answering. Applies to models that support thinking.\n\n- **On** — higher quality on complex coding and agent tasks (slower).\n- **Off** — faster responses for simple edits.",
+  "qwen-copilot.config.thinking.enabled.label": "On",
+  "qwen-copilot.config.thinking.disabled.label": "Off",
+
+  "qwen-copilot.config.debugLogging.description": "Enable verbose debug logging to the Qwen output channel. Use [`Qwen: Show Logs`](command:qwen-copilot.showLogs) to view the channel. Logs may include request metadata but not prompt text.",
+  "qwen-copilot.config.usageRefreshIntervalMinutes.description": "How often (in minutes) to refresh usage data. Minimum 1, maximum 1440 (24 hours).",
+  "qwen-copilot.config.showUsageStatusBar.description": "Show the Qwen usage status-bar item.",
+  "qwen-copilot.config.tokenPlanStatsEndpoint.description": "Optional override for Token Plan usage endpoint. Leave empty to use built-in endpoint candidates."
+}
