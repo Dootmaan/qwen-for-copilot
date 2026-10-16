@@ -2,21 +2,21 @@ import * as vscode from 'vscode';
 import { safeStringify } from '../json';
 import { logger } from '../logger';
 import type {
-	GLMChatRequest,
-	GLMStreamChunk,
-	GLMToolCall,
-	GLMUsage,
-	IGLMClient,
+	QwenChatRequest,
+	QwenStreamChunk,
+	QwenToolCall,
+	QwenUsage,
+	IQwenClient,
 	StreamCallbacks,
 } from '../types';
 import { formatRequestError, isAbortError, normalizeRequestError } from './errors';
 import { fetchChatCompletionWithRetry } from './retry';
 
 /**
- * Lightweight SSE-streaming GLM API client.
+ * Lightweight SSE-streaming Qwen API client.
  * No external dependencies — uses Node's built-in `fetch`.
  */
-export class GLMClient implements IGLMClient {
+export class QwenClient implements IQwenClient {
 	constructor(
 		private baseUrl: string,
 		private apiKey: string,
@@ -25,13 +25,13 @@ export class GLMClient implements IGLMClient {
 	) {}
 
 	/**
-	 * Stream a chat completion from the GLM API.
+	 * Stream a chat completion from the Qwen API.
 	 * Parses SSE chunks and dispatches callbacks for content, thinking, and tool calls.
 	 * Transient failures (HTTP 429 / 5xx) are retried with exponential backoff before
 	 * any output is streamed; once streaming begins, the response is committed.
 	 */
 	async streamChatCompletion(
-		request: GLMChatRequest,
+		request: QwenChatRequest,
 		callbacks: StreamCallbacks,
 		cancellationToken?: vscode.CancellationToken,
 	): Promise<void> {
@@ -55,7 +55,7 @@ export class GLMClient implements IGLMClient {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${this.apiKey}`,
 					'Accept-Encoding': 'identity',
-					'User-Agent': `glm-copilot/${this.version}`,
+					'User-Agent': `qwen-copilot/${this.version}`,
 				},
 					body: requestBody,
 					signal: controller.signal,
@@ -73,8 +73,8 @@ export class GLMClient implements IGLMClient {
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
-			let latestUsage: GLMUsage | undefined;
-			const pendingToolCalls = new Map<number, GLMToolCall>();
+			let latestUsage: QwenUsage | undefined;
+			const pendingToolCalls = new Map<number, QwenToolCall>();
 			while (true) {
 				if (cancellationToken?.isCancellationRequested) {
 					controller.abort();
@@ -103,7 +103,7 @@ export class GLMClient implements IGLMClient {
 					}
 					const jsonStr = trimmed.slice(6);
 					try {
-						const chunk = JSON.parse(jsonStr) as GLMStreamChunk;
+						const chunk = JSON.parse(jsonStr) as QwenStreamChunk;
 						if (chunk.usage) {
 							latestUsage = chunk.usage;
 						}
@@ -157,7 +157,7 @@ export class GLMClient implements IGLMClient {
 				return;
 			}
 			const normalizedError = normalizeRequestError(error, { baseUrl: this.baseUrl });
-			logger.error('GLM request failed:', formatRequestError(normalizedError));
+			logger.error('Qwen request failed:', formatRequestError(normalizedError));
 			callbacks.onError(normalizedError);
 		} finally {
 			cancelListener?.dispose();
@@ -165,14 +165,14 @@ export class GLMClient implements IGLMClient {
 	}
 }
 
-function flushToolCalls(pending: Map<number, GLMToolCall>, callbacks: StreamCallbacks): void {
+function flushToolCalls(pending: Map<number, QwenToolCall>, callbacks: StreamCallbacks): void {
 	for (const toolCall of pending.values()) {
 		callbacks.onToolCall(toolCall);
 	}
 	pending.clear();
 }
 
-function reportFinalUsage(callbacks: StreamCallbacks, usage: GLMUsage | undefined): void {
+function reportFinalUsage(callbacks: StreamCallbacks, usage: QwenUsage | undefined): void {
 	if (!usage || !callbacks.onUsage) {
 		return;
 	}

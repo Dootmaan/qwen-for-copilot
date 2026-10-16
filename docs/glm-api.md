@@ -1,11 +1,11 @@
-# GLM API Reference
+# Qwen API Reference
 
-Reference for the GLM (Zhipu / Z.ai) API surface this extension targets. Captured
+Reference for the Qwen (Zhipu / Z.ai) API surface this extension targets. Captured
 from the z.ai docs (June 2026); the API mechanics here are stable.
 
 For the current list of model ids, context windows, and capabilities shown in the
 Copilot Chat model picker, see the [Models table in the README](../README.md#models)
-and the `glm-copilot.MODELS` constant in `src/consts.ts` — those are the source of
+and the `qwen-copilot.MODELS` constant in `src/consts.ts` — those are the source of
 truth and evolve as Z.ai ships new models.
 
 ## Authentication
@@ -30,7 +30,7 @@ Append `/chat/completions` to any base URL below.
 | Standard | International | `https://api.z.ai/api/paas/v4` |
 | Standard | Mainland China | `https://open.bigmodel.cn/api/paas/v4` |
 
-The Coding Plan endpoint is restricted to coding scenarios. The `glm-copilot.baseUrl`
+The Coding Plan endpoint is restricted to coding scenarios. The `qwen-copilot.baseUrl`
 setting overrides all of the above and is used verbatim (useful for proxies).
 
 ## Streaming
@@ -52,13 +52,13 @@ Top-level request field, binary:
 { "thinking": { "type": "enabled" | "disabled" } }
 ```
 
-Enabled by default. In this extension, the `glm-copilot.thinking` setting maps
+Enabled by default. In this extension, the `qwen-copilot.thinking` setting maps
 directly to `thinking.type` on every request.
 
 ### Reasoning effort
 
-GLM-5.2 also accepts a top-level `reasoning_effort` string that tunes how much the
-model reasons. It only takes effect when thinking is enabled and is GLM-5.2 only.
+Qwen-5.2 also accepts a top-level `reasoning_effort` string that tunes how much the
+model reasons. It only takes effect when thinking is enabled and is Qwen-5.2 only.
 
 ```json
 { "reasoning_effort": "max" }
@@ -96,5 +96,5 @@ sent back as `role: "tool"` messages with the matching `tool_call_id`.
 | Standard — International | <https://z.ai/manage-apikey/apikey-list> |
 | Standard — Mainland China | <https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys> |
 
-The `GLM: Get API Key` command opens the correct page for the active
+The `Qwen: Get API Key` command opens the correct page for the active
 `apiMode` / `region`.

@@ -25,7 +25,7 @@ import {
 	parseRetryAfterMs,
 	computeBackoffDelay,
 } from './retry';
-import { GLMRequestError } from './errors';
+import { QwenRequestError } from './errors';
 import {
 	RETRY_BASE_DELAY_MS,
 	RETRY_DEFAULT_MAX_RETRIES,
@@ -247,12 +247,12 @@ describe('fetchChatCompletionWithRetry', () => {
 		}));
 	});
 
-	it('does not retry HTTP 400 and throws a GLMRequestError', async () => {
+	it('does not retry HTTP 400 and throws a QwenRequestError', async () => {
 		const onRetryBackoff = vi.fn();
 		const fetchImpl = seqFetch([response(400, 'bad request')]);
 		await expect(
 			fetchChatCompletionWithRetry(URL, INIT, { baseUrl: BASE_URL, maxRetries: 3, fetchImpl, onRetryBackoff }),
-		).rejects.toMatchObject({ name: 'GLMRequestError', status: 400 });
+		).rejects.toMatchObject({ name: 'QwenRequestError', status: 400 });
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 		expect(onRetryBackoff).not.toHaveBeenCalled();
 	});
@@ -261,11 +261,11 @@ describe('fetchChatCompletionWithRetry', () => {
 		const fetchImpl = seqFetch([response(401, 'unauthorized')]);
 		await expect(
 			fetchChatCompletionWithRetry(URL, INIT, { baseUrl: BASE_URL, maxRetries: 3, fetchImpl }),
-		).rejects.toMatchObject({ name: 'GLMRequestError', status: 401 });
+		).rejects.toMatchObject({ name: 'QwenRequestError', status: 401 });
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 	});
 
-	it('throws a GLMRequestError with status 429 after exhausting maxRetries', async () => {
+	it('throws a QwenRequestError with status 429 after exhausting maxRetries', async () => {
 		vi.useFakeTimers();
 		const fetchImpl = seqFetch(
 			Array.from({ length: 3 }, () => response(429, 'rate limited')),
@@ -278,17 +278,17 @@ describe('fetchChatCompletionWithRetry', () => {
 		// Attach a handler before flushing timers so the rejection isn't reported as unhandled.
 		promise.catch(() => {});
 		await vi.runAllTimersAsync();
-		await expect(promise).rejects.toMatchObject({ name: 'GLMRequestError', status: 429 });
+		await expect(promise).rejects.toMatchObject({ name: 'QwenRequestError', status: 429 });
 		expect(fetchImpl).toHaveBeenCalledTimes(3);
 	});
 
-	it('throws a GLMRequestError instance (not a plain Error)', async () => {
+	it('throws a QwenRequestError instance (not a plain Error)', async () => {
 		const fetchImpl = seqFetch([response(400, 'bad request')]);
 		try {
 			await fetchChatCompletionWithRetry(URL, INIT, { baseUrl: BASE_URL, maxRetries: 3, fetchImpl });
 			throw new Error('should have thrown');
 		} catch (error) {
-			expect(error).toBeInstanceOf(GLMRequestError);
+			expect(error).toBeInstanceOf(QwenRequestError);
 		}
 	});
 
@@ -419,7 +419,7 @@ describe('fetchChatCompletionWithRetry', () => {
 				};
 			};
 		};
-		const setting = pkg.contributes.configuration.properties['glm-copilot.maxRetries'];
+		const setting = pkg.contributes.configuration.properties['qwen-copilot.maxRetries'];
 		expect(setting.default).toBe(RETRY_DEFAULT_MAX_RETRIES);
 		expect(setting.maximum).toBe(RETRY_MAX_RETRIES_CEILING);
 	});
@@ -434,7 +434,7 @@ describe('fetchChatCompletionWithRetry', () => {
 				fetchImpl,
 				onRetryBackoff,
 			}),
-		).rejects.toMatchObject({ name: 'GLMRequestError', status: 429 });
+		).rejects.toMatchObject({ name: 'QwenRequestError', status: 429 });
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 		expect(onRetryBackoff).not.toHaveBeenCalled();
 	});
@@ -449,7 +449,7 @@ describe('fetchChatCompletionWithRetry', () => {
 				fetchImpl,
 				onRetryBackoff,
 			}),
-		).rejects.toMatchObject({ name: 'GLMRequestError', status: 429 });
+		).rejects.toMatchObject({ name: 'QwenRequestError', status: 429 });
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 		expect(onRetryBackoff).not.toHaveBeenCalled();
 	});

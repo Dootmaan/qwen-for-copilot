@@ -13,7 +13,7 @@ export interface ThinkingEffortSpec {
 	default: ThinkingEffort;
 }
 
-export interface GLMModelCapabilities {
+export interface QwenModelCapabilities {
 	/** `true` enables tool calling with the default cap; a number sets a custom cap. */
 	toolCalling: number | boolean;
 	imageInput: boolean;
@@ -22,8 +22,8 @@ export interface GLMModelCapabilities {
 	thinkingEffort?: ThinkingEffortSpec;
 }
 
-/** A GLM model exposed in the Copilot Chat picker. */
-export interface GLMModel {
+/** A Qwen model exposed in the Copilot Chat picker. */
+export interface QwenModel {
 	id: string;
 	name: string;
 	family: string;
@@ -31,7 +31,7 @@ export interface GLMModel {
 	detail: string;
 	maxInputTokens: number;
 	maxOutputTokens: number;
-	capabilities: GLMModelCapabilities;
+	capabilities: QwenModelCapabilities;
 	/** API modes that expose this model. The picker filters built-ins by the active mode. */
 	availableIn: ApiMode[];
 }
@@ -113,44 +113,46 @@ export interface UsageSnapshot {
 
 // ---- OpenAI-compatible wire types ----
 
-export interface GLMToolFunction {
+export interface QwenToolFunction {
 	name: string;
 	description?: string;
 	parameters?: unknown;
 }
 
-export interface GLMTool {
+export interface QwenTool {
 	type: 'function';
-	function: GLMToolFunction;
+	function: QwenToolFunction;
 }
 
-export interface GLMToolCall {
+export interface QwenToolCall {
 	id: string;
 	type: 'function';
 	function: { name: string; arguments: string };
 }
 
-export interface GLMMessage {
+export interface QwenMessage {
 	role: 'system' | 'user' | 'assistant' | 'tool';
 	content: string;
-	tool_calls?: GLMToolCall[];
+	tool_calls?: QwenToolCall[];
 	tool_call_id?: string;
 	reasoning_content?: string;
 }
 
-export interface GLMChatRequest {
+export interface QwenChatRequest {
 	model: string;
-	messages: GLMMessage[];
+	messages: QwenMessage[];
 	stream: boolean;
-	tools?: GLMTool[];
+	tools?: QwenTool[];
 	tool_choice?: 'auto' | 'none';
 	max_tokens?: number;
 	thinking?: { type: ThinkingMode };
+	/** Qwen's native thinking toggle (DashScope `enable_thinking`); kept in sync with `thinking`. */
+	enable_thinking?: boolean;
 	reasoning_effort?: Exclude<ThinkingEffort, 'none'>;
 	stream_options?: { include_usage: boolean };
 }
 
-export interface GLMUsage {
+export interface QwenUsage {
 	prompt_tokens?: number;
 	completion_tokens?: number;
 	total_tokens?: number;
@@ -159,27 +161,27 @@ export interface GLMUsage {
 
 // ---- Streaming delta shapes ----
 
-export interface GLMDeltaToolCall {
+export interface QwenDeltaToolCall {
 	index: number;
 	id?: string;
 	type?: 'function';
 	function?: { name?: string; arguments?: string };
 }
 
-export interface GLMDelta {
+export interface QwenDelta {
 	content?: string;
 	reasoning_content?: string;
-	tool_calls?: GLMDeltaToolCall[];
+	tool_calls?: QwenDeltaToolCall[];
 }
 
-export interface GLMChoice {
-	delta?: GLMDelta;
+export interface QwenChoice {
+	delta?: QwenDelta;
 	finish_reason?: string | null;
 }
 
-export interface GLMStreamChunk {
-	choices?: GLMChoice[];
-	usage?: GLMUsage;
+export interface QwenStreamChunk {
+	choices?: QwenChoice[];
+	usage?: QwenUsage;
 }
 
 // ---- Callback + collaborator contracts ----
@@ -194,17 +196,17 @@ export interface RetryBackoffInfo {
 export interface StreamCallbacks {
 	onContent: (content: string) => void;
 	onThinking: (text: string) => void;
-	onToolCall: (toolCall: GLMToolCall) => void;
-	onUsage?: (usage: GLMUsage) => void;
+	onToolCall: (toolCall: QwenToolCall) => void;
+	onUsage?: (usage: QwenUsage) => void;
 	onRetryBackoff?: (info: RetryBackoffInfo) => void;
 	onDone: () => void;
 	onError: (error: unknown) => void;
 }
 
-/** Streaming GLM chat client. Implemented by `client/core.ts`. */
-export interface IGLMClient {
+/** Streaming Qwen chat client. Implemented by `client/core.ts`. */
+export interface IQwenClient {
 	streamChatCompletion(
-		request: GLMChatRequest,
+		request: QwenChatRequest,
 		callbacks: StreamCallbacks,
 		cancellationToken?: vscode.CancellationToken,
 	): Promise<void>;

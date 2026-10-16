@@ -11,7 +11,7 @@ description: >-
 
 # Release audit
 
-Verify the `glm-for-github-copilot-chat` extension is ready to ship a target
+Verify the `qwen-for-github-copilot-chat` extension is ready to ship a target
 version `X.Y.Z`. Treat every version number and every documented command or
 feature as a claim to check against the code — never assume the docs are right.
 Report blockers plainly. Do not commit, tag, or publish unless explicitly asked.
@@ -52,8 +52,8 @@ landing in a past version (e.g. "replaced … in v0.2.0") are correct, not stale
 - The **Commands** table lists every contributed command (see step 5), with the
   exact title from the NLS file.
 - Feature sections mention any new commands (e.g. the usage-tracking section
-  names `GLM: Refresh Usage` and `GLM: Show Usage Details`).
-- `llms.txt` and `docs/glm-api.md` defer to the README for the command/model
+  names `Qwen: Refresh Usage` and `Qwen: Show Usage Details`).
+- `llms.txt` and `docs/qwen-api.md` defer to the README for the command/model
   list, so they need no per-command updates — confirm they still defer rather
   than duplicating a now-stale list.
 
@@ -72,7 +72,7 @@ node -e "const a=require('./package.nls.json'),b=require('./package.nls.zh-cn.js
 
 Every `contributes.commands[].command` in `package.json` must be registered with
 `vscode.commands.registerCommand` somewhere in `src/`. The usage commands
-(`glm-copilot.refreshUsage`, `glm-copilot.openUsageDetail`) live in
+(`qwen-copilot.refreshUsage`, `qwen-copilot.openUsageDetail`) live in
 `src/runtime/usage-bar.ts`; the rest are in `src/runtime/commands.ts` and
 `src/runtime/provider.ts`. Verify:
 
@@ -90,7 +90,7 @@ All must pass (CI runs only typecheck + package, but run the full set):
 pnpm run typecheck
 pnpm run lint
 pnpm run test
-pnpm exec vsce package --no-dependencies -o "${TMPDIR:-/tmp}/glm-X.Y.Z.vsix"
+pnpm exec vsce package --no-dependencies -o "${TMPDIR:-/tmp}/qwen-X.Y.Z.vsix"
 ```
 
 Package the `.vsix` to a scratch path, not the repo (`*.vsix` is gitignored

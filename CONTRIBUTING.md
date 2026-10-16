@@ -1,7 +1,7 @@
-# Contributing to GLM Models for GitHub Copilot Chat
+# Contributing to Qwen Models for GitHub Copilot Chat
 
-Thanks for your interest in improving **GLM Models for GitHub Copilot Chat** — a VS Code extension that
-brings GLM (Z.ai / Zhipu) models into the GitHub Copilot Chat model picker. Contributions of
+Thanks for your interest in improving **Qwen Models for GitHub Copilot Chat** — a VS Code extension that
+brings Qwen (Z.ai / Zhipu) models into the GitHub Copilot Chat model picker. Contributions of
 all kinds are welcome: bug reports, feature requests, documentation fixes, and code.
 
 This document explains how to set up the project, the conventions we follow, and how changes
@@ -15,8 +15,8 @@ there.
 
 ## Ways to contribute
 
-- **Report a bug** — open a [Bug report](https://github.com/KiwiGaze/glm-for-copilot/issues/new?template=bug_report.yml).
-- **Request a feature** — open a [Feature request](https://github.com/KiwiGaze/glm-for-copilot/issues/new?template=feature_request.yml).
+- **Report a bug** — open a [Bug report](https://github.com/KiwiGaze/qwen-for-copilot/issues/new?template=bug_report.yml).
+- **Request a feature** — open a [Feature request](https://github.com/KiwiGaze/qwen-for-copilot/issues/new?template=feature_request.yml).
 - **Improve the docs** — typos, unclear wording, and missing details are all fair game.
 - **Submit code** — fix a bug or build a feature. For anything non-trivial, please open an
   issue first so we can agree on the approach before you invest time.
@@ -26,7 +26,7 @@ there.
 The implementation is plain TypeScript with **zero runtime dependencies**. Key directories:
 
 - `src/extension.ts` — activation entry point.
-- `src/client/` — OpenAI-compatible SSE streaming client for the GLM API.
+- `src/client/` — OpenAI-compatible SSE streaming client for the Qwen API.
 - `src/provider/` — the `vscode.LanguageModelChatProvider` implementation.
 - `src/runtime/` — lifecycle, command registration, onboarding.
 - `src/endpoint.ts`, `src/config.ts`, `src/consts.ts` — endpoint routing and settings.
@@ -51,7 +51,7 @@ pnpm exec tsc -p ./     # type-check and compile to out/
 
 1. Open the repository in VS Code.
 2. Press <kbd>F5</kbd> to launch an **Extension Development Host** window.
-3. In that window, run **GLM: Set API Key** and pick a GLM model from the Copilot Chat picker.
+3. In that window, run **Qwen: Set API Key** and pick a Qwen model from the Copilot Chat picker.
 
 ### Package a VSIX
 

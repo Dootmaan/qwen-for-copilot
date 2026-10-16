@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
 import { t } from '../i18n';
 import { logger } from '../logger';
-import { GLMChatProvider } from '../provider';
+import { QwenChatProvider } from '../provider';
 import { registerActionUrls } from './actions';
 import { registerCommands } from './commands';
 import { registerProvider } from './provider';
 import { showWelcomeIfNeeded } from './welcome';
 
-let activeProvider: GLMChatProvider | undefined;
+let activeProvider: QwenChatProvider | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
 	try {
-		logger.info('Activating GLM Models for GitHub Copilot Chat');
+		logger.info('Activating Qwen Models for GitHub Copilot Chat');
 		registerCommands(context);
 		registerActionUrls(context);
 		activeProvider = await registerProvider(context);

@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We want taking part in the GLM Models for GitHub Copilot Chat project to be a welcoming and respectful
+We want taking part in the Qwen Models for GitHub Copilot Chat project to be a welcoming and respectful
 experience for everyone, regardless of background or identity.
 
 ## Our standards
@@ -34,7 +34,7 @@ discussions — and when someone is representing the project in public.
 
 If you experience or witness unacceptable behaviour, please report it privately to the project
 maintainer, [@KiwiGaze](https://github.com/KiwiGaze). For sensitive reports you may use the
-repository's [private reporting](https://github.com/KiwiGaze/glm-for-copilot/security/advisories/new)
+repository's [private reporting](https://github.com/KiwiGaze/qwen-for-copilot/security/advisories/new)
 channel. All reports will be reviewed promptly and fairly, and the maintainer will respect the
 privacy of the reporter.
 

@@ -4,7 +4,7 @@ import type { IUsageClient } from '../client/usage';
 import type { UsageSnapshot } from '../types';
 
 // VS Code API is not available in unit tests; stub only the surface UsageStatusBar touches.
-const statusBar = { text: '', tooltip: '', command: '', name: 'glm', backgroundColor: undefined as unknown, color: undefined as unknown, show: vi.fn(), hide: vi.fn(), dispose: vi.fn() };
+const statusBar = { text: '', tooltip: '', command: '', name: 'qwen', backgroundColor: undefined as unknown, color: undefined as unknown, show: vi.fn(), hide: vi.fn(), dispose: vi.fn() };
 const subscriptions: { dispose(): void }[] = [];
 
 vi.mock('vscode', () => ({
@@ -73,7 +73,7 @@ function makeAuth(hasKey: boolean): IAuthManager {
 }
 
 function okSnapshot(): UsageSnapshot {
-	return { status: 'ok', fetchedAt: Date.now(), planName: 'GLM Coding Max', metrics: [{ kind: 'session', used: 42, limit: 100 }] };
+	return { status: 'ok', fetchedAt: Date.now(), planName: 'Qwen Coding Max', metrics: [{ kind: 'session', used: 42, limit: 100 }] };
 }
 
 function setConfig(mode: 'coding-plan' | 'standard', region: 'international' | 'china', baseUrl = ''): void {
@@ -213,7 +213,7 @@ describe('UsageStatusBar activation gate', () => {
 			client,
 		);
 		await bar.refresh();
-		expect(statusBar.text).toBe('$(sparkle) GLM 1095 / 4000');
+		expect(statusBar.text).toBe('$(sparkle) Qwen 1095 / 4000');
 		expect(statusBar.text).not.toContain('%');
 		bar.dispose();
 	});
@@ -269,7 +269,7 @@ describe('UsageStatusBar activation gate', () => {
 				metrics: [],
 				balance: {
 					availableCash: 0,
-					tokenPackages: [{ name: 'GLM Resource Package', remainingTokens: 500, magnitude: 1000, status: 'EFFECTIVE' }],
+					tokenPackages: [{ name: 'Qwen Resource Package', remainingTokens: 500, magnitude: 1000, status: 'EFFECTIVE' }],
 				},
 			})),
 		};

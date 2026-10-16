@@ -2,19 +2,19 @@ import * as vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { UsageClient } from '../client/usage';
 import { VENDOR_ID } from '../consts';
-import { resolveUsageHost } from '../endpoint';
+import { resolveTokenPlanStatsEndpoints } from '../endpoint';
 import { logger } from '../logger';
-import { GLMChatProvider } from '../provider';
+import { QwenChatProvider } from '../provider';
 import { UsageStatusBar } from './usage-bar';
 
-export async function registerProvider(context: vscode.ExtensionContext): Promise<GLMChatProvider> {
+export async function registerProvider(context: vscode.ExtensionContext): Promise<QwenChatProvider> {
 	const authManager = new AuthManager(context);
-	const provider = new GLMChatProvider(context, authManager);
-	const usageClient = new UsageClient(resolveUsageHost);
+	const provider = new QwenChatProvider(context, authManager);
+	const usageClient = new UsageClient(resolveTokenPlanStatsEndpoints);
 	const usageBar = new UsageStatusBar(context, authManager, usageClient);
 	context.subscriptions.push(
-		vscode.commands.registerCommand('glm-copilot.setApiKey', () => provider.configureApiKey()),
-		vscode.commands.registerCommand('glm-copilot.clearApiKey', () => provider.clearApiKey()),
+		vscode.commands.registerCommand('qwen-copilot.setApiKey', () => provider.configureApiKey()),
+		vscode.commands.registerCommand('qwen-copilot.clearApiKey', () => provider.clearApiKey()),
 		vscode.lm.registerLanguageModelChatProvider(VENDOR_ID, provider),
 		usageBar,
 	);

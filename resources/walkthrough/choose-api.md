@@ -1,20 +1,14 @@
 ## Coding Plan
 
-Use this if you have a GLM Coding Plan subscription. The endpoint follows your `region`: International (`z.ai`) → `api.z.ai/api/coding/paas/v4`, Mainland China (`bigmodel.cn`) → `open.bigmodel.cn/api/coding/paas/v4`. Get your key at [z.ai/manage-apikey/subscription](https://z.ai/manage-apikey/subscription) (International) or [bigmodel.cn/coding-plan](https://bigmodel.cn/coding-plan/personal/overview) (Mainland China).
+Use this mode for Qwen Token Plan subscriptions.
 
-Set `glm-copilot.apiMode` to **Coding Plan** and pick the matching `glm-copilot.region` in settings.
+- Default endpoint: `https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1`
+- Supports OpenAI-compatible and Anthropic-compatible integrations (this extension uses OpenAI-compatible mode)
 
 ## Standard API
 
-Pay-as-you-go access via the GLM Open Platform. The endpoint depends on your region:
-
-- **International** (`z.ai`) — get your key at [z.ai/manage-apikey/apikey-list](https://z.ai/manage-apikey/apikey-list)
-- **Mainland China** (`bigmodel.cn`) — get your key at [open.bigmodel.cn](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys)
-
-Set `glm-copilot.apiMode` to **Standard API** and pick the matching `glm-copilot.region`.
+Use this mode for DashScope pay-as-you-go.
 
 ## Custom endpoint
 
-Set `glm-copilot.baseUrl` to override the endpoint entirely. Both `apiMode` and `region` are ignored when a base URL is set. Use this for self-hosted proxies or compatible APIs.
-
-Open settings to configure these options.
+Set `qwen-copilot.baseUrl` to fully override the endpoint (mode and region will be ignored).

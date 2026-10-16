@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { IGLMClient, StreamCallbacks } from '../types';
+import type { IQwenClient, StreamCallbacks } from '../types';
 
 const vscodeMock = vi.hoisted(() => {
 	const state: {
@@ -49,8 +49,8 @@ vi.mock('vscode', () => ({
 vi.mock('../i18n', () => ({
 	t: (key: string, ...args: string[]) => {
 		const strings: Record<string, string> = {
-			'request.retry.rateLimited': `GLM is rate limited. Retrying in ${args[0]}s (${args[1]}/${args[2]}).`,
-			'request.retry.busy': `GLM is busy. Retrying in ${args[0]}s (${args[1]}/${args[2]}).`,
+			'request.retry.rateLimited': `Qwen is rate limited. Retrying in ${args[0]}s (${args[1]}/${args[2]}).`,
+			'request.retry.busy': `Qwen is busy. Retrying in ${args[0]}s (${args[1]}/${args[2]}).`,
 		};
 		return strings[key] ?? key;
 	},
@@ -68,7 +68,7 @@ import { streamChatCompletion } from './stream';
 
 const token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
 
-function clientWith(callback: (callbacks: StreamCallbacks) => void): IGLMClient {
+function clientWith(callback: (callbacks: StreamCallbacks) => void): IQwenClient {
 	return {
 		streamChatCompletion: vi.fn(async (_request, callbacks) => {
 			callback(callbacks);
@@ -76,11 +76,11 @@ function clientWith(callback: (callbacks: StreamCallbacks) => void): IGLMClient 
 	};
 }
 
-function args(client: IGLMClient): Parameters<typeof streamChatCompletion>[0] {
+function args(client: IQwenClient): Parameters<typeof streamChatCompletion>[0] {
 	return {
 		prepared: {
 			client,
-			request: { model: 'glm', messages: [], stream: true },
+			request: { model: 'qwen', messages: [], stream: true },
 			totalRequestChars: 0,
 			isThinkingModel: true,
 		},
@@ -107,7 +107,7 @@ describe('streamChatCompletion retry backoff progress', () => {
 
 		await streamChatCompletion(args(client));
 
-		expect(thinkingParts).toEqual(['GLM is rate limited. Retrying in 2s (2/3).']);
+		expect(thinkingParts).toEqual(['Qwen is rate limited. Retrying in 2s (2/3).']);
 		expect(textParts).toEqual([]);
 	});
 
@@ -125,7 +125,7 @@ describe('streamChatCompletion retry backoff progress', () => {
 
 		await streamChatCompletion(args(client));
 
-		expect(thinkingParts).toEqual(['GLM is busy. Retrying in 1s (2/3).']);
+		expect(thinkingParts).toEqual(['Qwen is busy. Retrying in 1s (2/3).']);
 		expect(textParts).toEqual([]);
 	});
 

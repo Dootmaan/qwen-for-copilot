@@ -67,7 +67,7 @@ export interface FetchWithRetryOptions {
  * with exponential backoff and jitter before returning. Retries happen only
  * before any response body is streamed, so no partial output is ever replayed.
  *
- * Non-retryable HTTP responses and exhausted retries throw a `GLMRequestError`
+ * Non-retryable HTTP responses and exhausted retries throw a `QwenRequestError`
  * via `createHttpError`; transport errors are normalized via `normalizeRequestError`.
  * Cancellation during a backoff sleep rejects with an `AbortError`.
  */
@@ -108,7 +108,7 @@ export async function fetchChatCompletionWithRetry(
 			delayMs: delay,
 		});
 		logger.warn(
-			`GLM API returned HTTP ${response.status} on attempt ${attempt + 1}/${maxAttempts}; retrying in ${delay}ms`,
+			`Qwen API returned HTTP ${response.status} on attempt ${attempt + 1}/${maxAttempts}; retrying in ${delay}ms`,
 		);
 		await response.body?.cancel().catch(() => {});
 		await sleepWithCancellation(delay, token);

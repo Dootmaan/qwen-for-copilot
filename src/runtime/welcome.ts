@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { WALKTHROUGH_ID, WELCOME_SHOWN_KEY } from '../consts';
-import { GLMChatProvider } from '../provider';
+import { QwenChatProvider } from '../provider';
 
 export async function showWelcomeIfNeeded(
 	context: vscode.ExtensionContext,
-	provider: GLMChatProvider,
+	provider: QwenChatProvider,
 ): Promise<void> {
 	if (context.globalState.get(WELCOME_SHOWN_KEY)) {
 		return;

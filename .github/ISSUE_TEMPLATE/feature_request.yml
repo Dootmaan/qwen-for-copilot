@@ -32,5 +32,5 @@ body:
     attributes:
       label: Scope check
       options:
-        - label: This is about the extension itself, not GLM API/billing (which is handled by Z.ai).
+        - label: This is about the extension itself, not Qwen API/billing (which is handled by Z.ai).
           required: true

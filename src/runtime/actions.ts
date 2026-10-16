@@ -8,7 +8,7 @@ export function registerActionUrls(context: vscode.ExtensionContext): void {
 			handleUri(uri) {
 				switch (uri.path) {
 					case URI_PATHS.setApiKey:
-						void vscode.commands.executeCommand('glm-copilot.setApiKey');
+						void vscode.commands.executeCommand('qwen-copilot.setApiKey');
 						break;
 					case URI_PATHS.showLogs:
 						logger.show();

@@ -1,6 +1,7 @@
-export { GLMClient } from './core';
+export { QwenClient } from './core';
+export { discoverModelIds } from './model-discovery';
 export {
-	GLMRequestError,
+	QwenRequestError,
 	createHttpError,
 	normalizeRequestError,
 	createUserFacingError,

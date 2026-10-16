@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <circle cx="128" cy="128" r="124" fill="#141414"/>
-  <g transform="translate(25,41) scale(6.2)" fill="#FFFFFF">
-    <path d="M15.47,7.1l-1.3,1.85c-0.2,0.29-0.54,0.47-0.9,0.47h-7.1V7.09C6.16,7.1,15.47,7.1,15.47,7.1z"/>
-    <polygon points="24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"/>
-    <path d="M14.53,22.91l1.31-1.86c0.2-0.29,0.54-0.47,0.9-0.47h7.09v2.33H14.53z"/>
+  <defs>
+    <linearGradient id="qwenPurple" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#615CED"/>
+      <stop offset="1" stop-color="#B3A4FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#qwenPurple)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round">
+    <circle cx="128" cy="128" r="52"/>
+    <path d="M 150 150 L 190 190"/>
   </g>
-  <polygon fill="#FFFFFF" points="202,42 207.5,58.5 224,64 207.5,69.5 202,86 196.5,69.5 180,64 196.5,58.5"/>
+  <path d="M 202 42 L 207.5 58.5 L 224 64 L 207.5 69.5 L 202 86 L 196.5 69.5 L 180 64 L 196.5 58.5 Z" fill="#FFFFFF" opacity="0.95"/>
 </svg>

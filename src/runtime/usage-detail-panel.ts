@@ -8,7 +8,7 @@ import type { UsageStatusBar } from './usage-bar';
 import { usagePanelStrings } from './usage-strings';
 
 /**
- * Singleton webview panel showing z.ai Coding Plan quota detail. Clicking the GLM Usage
+ * Singleton webview panel showing Qwen Token Plan quota detail. Clicking the Qwen Usage
  * status bar opens (or reveals) this pane. It never fetches on its own: it renders the
  * effective snapshot pushed by UsageStatusBar via onDidChangeSnapshot.
  */
@@ -66,7 +66,7 @@ export class UsageDetailPanel {
 		if (message.type === 'refresh') {
 			await this.bar.refresh();
 		} else if (message.type === 'setKey') {
-			await vscode.commands.executeCommand('glm-copilot.setApiKey');
+			await vscode.commands.executeCommand('qwen-copilot.setApiKey');
 		}
 	}
 

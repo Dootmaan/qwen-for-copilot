@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to GLM for GitHub Copilot Chat! Please fill in the sections below. -->
+<!-- Thanks for contributing to Qwen for GitHub Copilot Chat! Please fill in the sections below. -->
 
 ## Summary
 

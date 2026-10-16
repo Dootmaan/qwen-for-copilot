@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { CONFIG_SECTION, DEFAULT_TOOLS_LIMIT, MODELS, RETRY_DEFAULT_MAX_RETRIES, RETRY_MAX_RETRIES_CEILING, USAGE_DEFAULT_REFRESH_MINUTES, USAGE_MAX_REFRESH_MINUTES, USAGE_MIN_REFRESH_MINUTES } from './consts';
 import { t } from './i18n';
-import type { ApiMode, CustomModelConfig, GLMModel, Region, ThinkingMode } from './types';
+import type { ApiMode, CustomModelConfig, QwenModel, Region, ThinkingMode } from './types';
 
-/** Read the `glm-copilot` configuration section. */
+/** Read the `qwen-copilot` configuration section. */
 function cfg(): vscode.WorkspaceConfiguration {
 	return vscode.workspace.getConfiguration(CONFIG_SECTION);
 }
@@ -13,7 +13,7 @@ export function getApiMode(): ApiMode {
 	return cfg().get<ApiMode>('apiMode', 'coding-plan');
 }
 
-/** Server region: `international` (z.ai) or `china` (open.bigmodel.cn). */
+/** Server region: `international` or `china` (for default DashScope endpoints). */
 export function getRegion(): Region {
 	return cfg().get<Region>('region', 'international');
 }
@@ -21,6 +21,16 @@ export function getRegion(): Region {
 /** User-supplied base URL override (empty = use the apiMode/region-derived endpoint). */
 export function getBaseUrlOverride(): string {
 	return (cfg().get<string>('baseUrl', '') ?? '').trim();
+}
+
+/** Optional override for Token Plan stats endpoint used by the usage panel. */
+export function getTokenPlanStatsEndpointOverride(): string {
+	return (cfg().get<string>('tokenPlanStatsEndpoint', '') ?? '').trim();
+}
+
+/** Whether to discover model IDs from the remote `/models` endpoint. */
+export function getEnableModelDiscovery(): boolean {
+	return cfg().get<boolean>('enableModelDiscovery', true);
 }
 
 /** Output-token cap, or `undefined` when unset (use the API default). */
@@ -45,7 +55,7 @@ export function getThinking(): ThinkingMode {
 	return cfg().get<ThinkingMode>('thinking', 'enabled') === 'disabled' ? 'disabled' : 'enabled';
 }
 
-/** Whether verbose debug logging is enabled (GLM output channel). */
+/** Whether verbose debug logging is enabled (Qwen output channel). */
 export function getDebugLogging(): boolean {
 	return cfg().get<boolean>('debugLogging', false);
 }
@@ -55,10 +65,10 @@ export function getSettingsApiKey(): string {
 	return (cfg().get<string>('apiKey', '') ?? '').trim();
 }
 
-/** User-defined models from the `customModels` setting, normalized to GLMModel. */
-export function getCustomModels(): GLMModel[] {
+/** User-defined models from the `customModels` setting, normalized to QwenModel. */
+export function getCustomModels(): QwenModel[] {
 	const raw = cfg().get<Array<string | CustomModelConfig>>('customModels', []) ?? [];
-	const models: GLMModel[] = [];
+	const models: QwenModel[] = [];
 	for (const entry of raw) {
 		const config: CustomModelConfig = typeof entry === 'string' ? { id: entry } : entry;
 		const id = (config.id ?? '').trim();
@@ -68,10 +78,10 @@ export function getCustomModels(): GLMModel[] {
 		models.push({
 			id,
 			name: config.name?.trim() || id,
-			family: 'glm',
+			family: 'qwen',
 			version: 'custom',
 			detail: t('model.custom.detail'),
-			maxInputTokens: config.maxInputTokens ?? 200000,
+			maxInputTokens: config.maxInputTokens ?? 262144,
 			maxOutputTokens: config.maxOutputTokens ?? 128000,
 			capabilities: {
 				toolCalling: config.toolCalling === false ? false : DEFAULT_TOOLS_LIMIT,
@@ -88,19 +98,26 @@ export function getCustomModels(): GLMModel[] {
  * Models to show in the picker: built-ins filtered by the active API mode
  * (unless a custom base URL is set), plus all custom models. Custom ids win.
  */
-export function listProviderModels(): GLMModel[] {
+export function listProviderModels(discoveredModelIds: string[] = []): QwenModel[] {
 	const customModels = getCustomModels();
 	const customIds = new Set(customModels.map((model) => model.id));
+	const discoveredModels = toDiscoveredModels(discoveredModelIds).filter(
+		(model) => !customIds.has(model.id),
+	);
+	const discoveredIds = new Set(discoveredModels.map((model) => model.id));
 	const useFilter = !getBaseUrlOverride();
 	const apiMode = getApiMode();
 	const builtins = MODELS.filter(
-		(model) => !customIds.has(model.id) && (!useFilter || model.availableIn.includes(apiMode)),
+		(model) =>
+			!customIds.has(model.id) &&
+			!discoveredIds.has(model.id) &&
+			(!useFilter || model.availableIn.includes(apiMode)),
 	);
-	return [...builtins, ...customModels];
+	return [...builtins, ...discoveredModels, ...customModels];
 }
 
 /** Find a model definition by id, searching custom models then built-ins. */
-export function findModelDefinition(id: string): GLMModel | undefined {
+export function findModelDefinition(id: string): QwenModel | undefined {
 	return getCustomModels().find((model) => model.id === id) ?? MODELS.find((model) => model.id === id);
 }
 
@@ -119,4 +136,50 @@ export function getShowUsageStatusBar(): boolean {
 export function getMaxRetries(): number {
 	const value = cfg().get<number>('maxRetries', RETRY_DEFAULT_MAX_RETRIES);
 	return Math.min(RETRY_MAX_RETRIES_CEILING, Math.max(0, Math.floor(value)));
+}
+
+/**
+ * Convert `/models` ids into picker models. Ids that match a built-in or custom definition
+ * inherit its full capabilities (thinking, effort spec, tool calling, token limits) so discovery
+ * never *downgrades* a known model — only truly unknown ids get the bare fallback entry.
+ */
+function toDiscoveredModels(ids: string[]): QwenModel[] {
+	const models: QwenModel[] = [];
+	for (const rawId of ids) {
+		const id = rawId.trim();
+		if (!id || !isLikelyChatModelId(id)) {
+			continue;
+		}
+		const builtin = findModelDefinition(id);
+		if (builtin) {
+			models.push({
+				...builtin,
+				version: 'discovered',
+				detail: t('model.discovered.detail'),
+			});
+			continue;
+		}
+		models.push({
+			id,
+			name: id,
+			family: id.split(/[-.]/)[0] || 'model',
+			version: 'discovered',
+			detail: t('model.discovered.detail'),
+			maxInputTokens: 262144,
+			maxOutputTokens: 32768,
+			capabilities: {
+				toolCalling: DEFAULT_TOOLS_LIMIT,
+				imageInput: /(vision|vl|image|multimodal)/i.test(id),
+				thinking: false,
+			},
+			availableIn: ['coding-plan', 'standard'],
+		});
+	}
+	return models;
+}
+
+function isLikelyChatModelId(id: string): boolean {
+	return !/(tts|asr|audio|video|embedding|rerank|speech|image-2\.0$|image-2\.0-pro$|image-3\.0-pro$)/i.test(
+		id,
+	);
 }

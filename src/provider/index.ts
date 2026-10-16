@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
-import { listProviderModels } from '../config';
+import { discoverModelIds } from '../client';
+import { getEnableModelDiscovery, listProviderModels } from '../config';
 import { API_KEY_SECRET, VENDOR_ID } from '../consts';
+import { resolveBaseUrl } from '../endpoint';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import type { IAuthManager } from '../types';
@@ -10,10 +12,10 @@ import { streamChatCompletion } from './stream';
 import { estimateTokenCount } from './tokens';
 
 /**
- * GLM Chat Provider — implements `vscode.LanguageModelChatProvider` so GLM
+ * Qwen Chat Provider — implements `vscode.LanguageModelChatProvider` so Qwen
  * models appear directly in the Copilot Chat model picker.
  */
-export class GLMChatProvider implements vscode.LanguageModelChatProvider {
+export class QwenChatProvider implements vscode.LanguageModelChatProvider {
 	private readonly onDidChangeLanguageModelChatInformationEmitter =
 		new vscode.EventEmitter<void>();
 
@@ -29,6 +31,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 	private isActive = true;
 
 	private readonly extensionVersion: string;
+	private discoveredModelIds: string[] = [];
+	private discoveryPromise: Promise<void> | null = null;
 
 	constructor(
 		context: vscode.ExtensionContext,
@@ -39,21 +43,23 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			this.onDidChangeLanguageModelChatInformationEmitter,
 			vscode.workspace.onDidChangeConfiguration((e) => {
 				if (
-					e.affectsConfiguration('glm-copilot.apiKey') ||
-					e.affectsConfiguration('glm-copilot.baseUrl') ||
-					e.affectsConfiguration('glm-copilot.apiMode') ||
-					e.affectsConfiguration('glm-copilot.region') ||
-					e.affectsConfiguration('glm-copilot.customModels')
+					e.affectsConfiguration('qwen-copilot.apiKey') ||
+					e.affectsConfiguration('qwen-copilot.baseUrl') ||
+					e.affectsConfiguration('qwen-copilot.apiMode') ||
+					e.affectsConfiguration('qwen-copilot.region') ||
+					e.affectsConfiguration('qwen-copilot.customModels') ||
+					e.affectsConfiguration('qwen-copilot.enableModelDiscovery')
 				) {
-					this.refreshModelPicker();
+					void this.refreshModelCatalog();
 				}
 			}),
 			context.secrets.onDidChange((e) => {
 				if (e.key === API_KEY_SECRET) {
-					this.refreshModelPicker();
+					void this.refreshModelCatalog();
 				}
 			}),
 		);
+		void this.refreshModelCatalog();
 	}
 
 	async provideLanguageModelChatInformation(
@@ -64,7 +70,10 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			return [];
 		}
 		const hasKey = await this.authManager.hasApiKey();
-		return listProviderModels().map((model) => toChatInfo(model, hasKey));
+		if (hasKey && this.discoveredModelIds.length === 0 && getEnableModelDiscovery()) {
+			await this.refreshModelCatalog();
+		}
+		return listProviderModels(this.discoveredModelIds).map((model) => toChatInfo(model, hasKey));
 	}
 
 	async provideLanguageModelChatResponse(
@@ -108,12 +117,13 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 	async configureApiKey(): Promise<void> {
 		const saved = await this.authManager.promptForApiKey();
 		if (saved) {
-			this.refreshModelPicker();
+			await this.refreshModelCatalog();
 		}
 	}
 
 	async clearApiKey(): Promise<void> {
 		await this.authManager.deleteApiKey();
+		this.discoveredModelIds = [];
 		this.refreshModelPicker();
 		vscode.window.showInformationMessage(t('auth.removed'));
 	}
@@ -129,7 +139,35 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		try {
 			await vscode.lm.selectChatModels({ vendor: VENDOR_ID });
 		} catch (error) {
-			logger.warn('Failed to refresh GLM models during deactivate', error);
+			logger.warn('Failed to refresh Qwen models during deactivate', error);
 		}
+	}
+
+	private async refreshModelCatalog(): Promise<void> {
+		if (this.discoveryPromise) {
+			return this.discoveryPromise;
+		}
+		const task = (async () => {
+			if (!getEnableModelDiscovery()) {
+				this.discoveredModelIds = [];
+				this.refreshModelPicker();
+				return;
+			}
+			const apiKey = await this.authManager.getApiKey();
+			if (!apiKey) {
+				this.discoveredModelIds = [];
+				this.refreshModelPicker();
+				return;
+			}
+			const ids = await discoverModelIds(resolveBaseUrl(), apiKey);
+			this.discoveredModelIds = ids;
+			this.refreshModelPicker();
+		})().finally(() => {
+			if (this.discoveryPromise === task) {
+				this.discoveryPromise = null;
+			}
+		});
+		this.discoveryPromise = task;
+		await task;
 	}
 }

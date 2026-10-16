@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { t } from '../i18n';
-import type { GLMModel, ThinkingEffortSpec } from '../types';
+import type { QwenModel, ThinkingEffortSpec } from '../types';
 
 function buildEffortSchema(spec: ThinkingEffortSpec) {
 	return {
@@ -23,8 +23,8 @@ type EffortChatInformation = vscode.LanguageModelChatInformation & {
 	readonly configurationSchema?: ReturnType<typeof buildEffortSchema>;
 };
 
-/** Build the Copilot Chat model picker entry for a GLM model. */
-export function toChatInfo(model: GLMModel, hasApiKey: boolean): EffortChatInformation {
+/** Build the Copilot Chat model picker entry for a Qwen model. */
+export function toChatInfo(model: QwenModel, hasApiKey: boolean): EffortChatInformation {
 	const detail = resolveModelText(model, 'detail') ?? model.detail;
 	const tooltip = resolveModelText(model, 'tooltip');
 	const spec = model.capabilities.thinkingEffort;
@@ -45,7 +45,7 @@ export function toChatInfo(model: GLMModel, hasApiKey: boolean): EffortChatInfor
 	};
 }
 
-function resolveModelText(model: GLMModel, field: string): string | undefined {
+function resolveModelText(model: QwenModel, field: string): string | undefined {
 	const key = `model.${model.id}.${field}`;
 	const translated = t(key);
 	return translated !== key ? translated : undefined;

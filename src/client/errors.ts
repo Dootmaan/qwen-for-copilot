@@ -2,21 +2,21 @@ import { resolveKeyPageUrl } from '../endpoint';
 import { t } from '../i18n';
 import { safeStringify } from '../json';
 
-/** Hostnames that are official GLM endpoints (used to gate the create-key link). */
-const OFFICIAL_API_HOSTS = ['api.z.ai', 'open.bigmodel.cn'];
+/** Hostnames that are official Qwen endpoints (used to gate the create-key link). */
+const OFFICIAL_API_HOSTS = ['dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com'];
 
 /** Maximum length for a single diagnostic field before truncation. */
 const MAX_DIAGNOSTIC_FIELD_LENGTH = 300;
 
 /** VS Code command URI that opens the API-key prompt. */
-const SET_API_KEY_COMMAND = 'command:glm-copilot.setApiKey';
+const SET_API_KEY_COMMAND = 'command:qwen-copilot.setApiKey';
 
 /** VS Code command URI that reveals the extension log output. */
-const SHOW_LOGS_COMMAND = 'command:glm-copilot.showLogs';
+const SHOW_LOGS_COMMAND = 'command:qwen-copilot.showLogs';
 
 type RequestErrorKind = 'http' | 'network' | 'unknown';
 
-interface GLMRequestErrorOptions {
+interface QwenRequestErrorOptions {
 	message: string;
 	kind: RequestErrorKind;
 	baseUrl: string;
@@ -136,8 +136,8 @@ interface NetworkCauseInfo {
 	value: string;
 }
 
-/** A GLM request failure carrying both a user-facing summary and diagnostics. */
-export class GLMRequestError extends Error {
+/** A Qwen request failure carrying both a user-facing summary and diagnostics. */
+export class QwenRequestError extends Error {
 	readonly kind: RequestErrorKind;
 	readonly userSummary: string;
 	readonly diagnosticMessage: string;
@@ -145,9 +145,9 @@ export class GLMRequestError extends Error {
 	readonly status?: number;
 	readonly code?: string;
 
-	constructor(options: GLMRequestErrorOptions) {
+	constructor(options: QwenRequestErrorOptions) {
 		super(options.message, { cause: options.cause });
-		this.name = 'GLMRequestError';
+		this.name = 'QwenRequestError';
 		this.kind = options.kind;
 		this.userSummary = options.userSummary ?? options.message;
 		this.diagnosticMessage = options.diagnosticMessage ?? options.message;
@@ -161,18 +161,18 @@ export function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === 'AbortError';
 }
 
-/** Build a `GLMRequestError` from a non-OK HTTP response. */
+/** Build a `QwenRequestError` from a non-OK HTTP response. */
 export async function createHttpError(
 	response: Response,
 	context: { baseUrl: string },
-): Promise<GLMRequestError> {
+): Promise<QwenRequestError> {
 	const { baseUrl } = context;
 	const responseText = await response.text();
 	const serverMessage = extractServerMessage(responseText);
 	const statusLabel = `HTTP ${response.status}`;
 	const userSummary = getHttpErrorMessage(response.status, statusLabel, baseUrl);
-	return new GLMRequestError({
-		message: `GLM API request failed with HTTP ${response.status}`,
+	return new QwenRequestError({
+		message: `Qwen API request failed with HTTP ${response.status}`,
 		userSummary,
 		kind: 'http',
 		baseUrl,
@@ -191,18 +191,18 @@ export async function createHttpError(
 	});
 }
 
-/** Categorize a thrown value into a `GLMRequestError`, or return it unchanged. */
+/** Categorize a thrown value into a `QwenRequestError`, or return it unchanged. */
 export function normalizeRequestError(
 	error: unknown,
 	context: { baseUrl: string },
-): GLMRequestError | Error {
-	if (error instanceof GLMRequestError) {
+): QwenRequestError | Error {
+	if (error instanceof QwenRequestError) {
 		return error;
 	}
 	if (!(error instanceof Error)) {
 		const value = truncateSingleLine(String(error));
-		return new GLMRequestError({
-			message: `GLM request failed with a non-Error value: ${value}`,
+		return new QwenRequestError({
+			message: `Qwen request failed with a non-Error value: ${value}`,
 			userSummary: t('error.unknown', value),
 			kind: 'unknown',
 			baseUrl: context.baseUrl,
@@ -219,10 +219,10 @@ export function normalizeRequestError(
 	}
 	const code = causeInfo.code ?? causeInfo.name;
 	const userSummary = getNetworkErrorMessage(code);
-	const enhanced = new GLMRequestError({
+	const enhanced = new QwenRequestError({
 		message: code
-			? `GLM request failed due to network error ${code}`
-			: 'GLM request failed due to a network error',
+			? `Qwen request failed due to network error ${code}`
+			: 'Qwen request failed due to a network error',
 		userSummary,
 		kind: 'network',
 		baseUrl: context.baseUrl,
@@ -243,7 +243,7 @@ export function normalizeRequestError(
 /** Produce a plain `Error` whose message is markdown for display in chat. */
 export function createUserFacingError(error: unknown): Error {
 	const message =
-		error instanceof GLMRequestError
+		error instanceof QwenRequestError
 			? formatMarkdownMessage(error.userSummary, getErrorActions(error))
 			: t('error.unknown', String(error));
 	const displayError = new Error(message);
@@ -253,7 +253,7 @@ export function createUserFacingError(error: unknown): Error {
 
 /** Build a compact single-string diagnostic for logging. */
 export function formatRequestError(error: unknown): string {
-	if (error instanceof GLMRequestError) {
+	if (error instanceof QwenRequestError) {
 		return error.stack
 			? `${error.diagnosticMessage}\n${error.stack}`
 			: error.diagnosticMessage;
@@ -290,7 +290,7 @@ function getHttpErrorMessage(status: number, statusLabel: string, baseUrl: strin
 	}
 }
 
-function getErrorActions(error: GLMRequestError): ErrorAction[] {
+function getErrorActions(error: QwenRequestError): ErrorAction[] {
 	const actions: ErrorAction[] = [];
 	if (error.kind === 'http' && error.status === 401) {
 		actions.push({ labelKey: 'error.action.setApiKey', url: SET_API_KEY_COMMAND });

@@ -5,7 +5,7 @@ import { t } from './i18n';
 import type { IAuthManager } from './types';
 
 /**
- * Manages the GLM API key via VS Code SecretStorage (secure), falling back to
+ * Manages the Qwen API key via VS Code SecretStorage (secure), falling back to
  * the extension settings value (less secure, for CI/automation).
  */
 export class AuthManager implements IAuthManager {

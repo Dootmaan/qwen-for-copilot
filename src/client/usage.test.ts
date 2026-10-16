@@ -1,379 +1,256 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { UsageClient } from './usage';
 
-// usage.ts imports errors.ts, which transitively imports endpoint.ts → config.ts → 'vscode'.
-// Stub the vscode surface so module resolution succeeds under vitest.
 vi.mock('vscode', () => ({
-	workspace: { getConfiguration: () => ({ get: () => undefined }) },
+	workspace: {
+		getConfiguration: vi.fn(() => ({ get: vi.fn((_k: string, d: unknown) => d) })),
+	},
 	env: { language: 'en' },
 }));
 
-import { UsageClient } from './usage';
-import { USAGE_REQUEST_TIMEOUT_MS } from '../consts';
+// The config getters drive region-dependent routing in usage.ts; mock them HOISTED
+// so mutations are visible when the module under test is imported.
+const cfg = vi.hoisted(() => ({ region: 'international' as 'international' | 'china' }));
+vi.mock('../config', () => ({
+	getRegion: () => cfg.region,
+	getApiMode: () => 'coding-plan',
+	getBaseUrlOverride: () => '',
+	getTokenPlanStatsEndpointOverride: () => '',
+}));
 
-const SUBSCRIPTION_OK = JSON.stringify({
-	data: [{ productName: 'GLM Coding Max', nextRenewTime: '2026-03-12' }],
-});
-const SUBSCRIPTION_EMPTY = JSON.stringify({ data: [] });
-
-const QUOTA_FULL = JSON.stringify({
-	code: 200,
-	data: {
-		limits: [
-			{ type: 'TOKENS_LIMIT', usage: 800000000, currentValue: 1900000, percentage: 10, nextResetTime: 1738368000000, unit: 3, number: 5 },
-			{ type: 'TOKENS_LIMIT', usage: 1600000000, currentValue: 4800000, percentage: 10, nextResetTime: 1738972800000, unit: 6, number: 7 },
-			{ type: 'TIME_LIMIT', usage: 4000, currentValue: 1095, percentage: 27, remaining: 2905, nextResetTime: 1738368000000, unit: 5, number: 1 },
-		],
-	},
-});
-const QUOTA_SESSION_ONLY = JSON.stringify({
-	code: 200,
-	data: { limits: [{ type: 'TOKENS_LIMIT', percentage: 10, nextResetTime: 1738368000000, unit: 3 }] },
-});
-const QUOTA_NON_NUMERIC = JSON.stringify({
-	code: 200,
-	data: { limits: [
-		{ type: 'TOKENS_LIMIT', percentage: '10', unit: 3 },
-		{ type: 'TIME_LIMIT', currentValue: '1095', usage: '4000' },
-	] },
-});
-const QUOTA_EMPTY = JSON.stringify({ data: { limits: [] } });
-
-function mockFetch(responses: Record<string, { status: number; body: string }>): typeof fetch {
-	return vi.fn(async (url: URL | string) => {
-		const path = typeof url === 'string' ? url : url.pathname;
-		const key = Object.keys(responses).find((k) => path.includes(k));
-		if (!key) throw new Error(`unexpected fetch: ${path}`);
-		const { status, body } = responses[key];
-		return new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
-	}) as unknown as typeof fetch;
+function jsonResponse(body: unknown, status = 200): Response {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+	});
 }
 
-describe('UsageClient.fetchSnapshot', () => {
-	beforeEach(() => vi.useRealTimers());
-
-	it('maps full quota to ok with session, weekly, web-searches', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: QUOTA_FULL },
-		}));
-		const snap = await client.fetchSnapshot('k');
+describe('UsageClient — Alibaba console RPC (queryCodingPlanInstanceInfoV2)', () => {
+	it('maps codingPlanQuotaInfo to session/weekly/web-searches metrics with plan name', async () => {
+		const calls: Array<{ url: string; method?: string; body?: string; auth?: string }> = [];
+		const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+			calls.push({
+				url: String(url),
+				method: init?.method,
+				body: typeof init?.body === 'string' ? init.body : undefined,
+				auth: (init?.headers as Record<string, string>)?.Authorization,
+			});
+			return jsonResponse({
+				statusCode: '200',
+				requestId: 'req-1',
+				success: true,
+				codingPlanInstanceInfos: [{ planName: 'Qwen Coding Pro', instanceName: 'cp-1' }],
+				codingPlanQuotaInfo: {
+					per5HourUsedQuota: 42,
+					per5HourTotalQuota: 300,
+					per5HourNextRefreshTime: 1761000000000,
+					perWeekUsedQuota: 1200,
+					perWeekTotalQuota: 5000,
+					perWeekNextRefreshTime: 1762000000000,
+					perBillMonthUsedQuota: 1095,
+					perBillMonthTotalQuota: 4000,
+					perBillMonthNextRefreshTime: 1763000000000,
+				},
+			});
+		});
+		const client = new UsageClient('https://modelstudio.console.alibabacloud.com/data/api.json', fetchImpl as typeof fetch);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('ok');
-		expect(snap.planName).toBe('GLM Coding Max');
-		expect(snap.renewsAt).toBe('2026-03-12');
+		expect(snap.planName).toBe('Qwen Coding Pro');
 		expect(snap.metrics.map((m) => m.kind)).toEqual(['session', 'weekly', 'web-searches']);
-		expect(snap.metrics[0]).toMatchObject({ used: 10, limit: 100, resetsAt: 1738368000000 });
-		expect(snap.metrics[1]).toMatchObject({ used: 10, limit: 100, resetsAt: 1738972800000 });
-		expect(snap.metrics[2]).toMatchObject({ used: 1095, limit: 4000, resetsAt: 1738368000000 });
-		expect(snap.fetchedAt).toBeGreaterThan(0);
+		expect(snap.metrics[0]).toMatchObject({ used: 42, limit: 300, resetsAt: 1761000000000 });
+		expect(snap.metrics[1]).toMatchObject({ used: 1200, limit: 5000 });
+		expect(snap.metrics[2]).toMatchObject({ used: 1095, limit: 4000 });
+
+		// Request shape: POST with the RPC query params, API-key auth headers, wrapped JSON body.
+		expect(calls).toHaveLength(1);
+		const { url, method, body, auth } = calls[0];
+		expect(method).toBe('POST');
+		expect(auth).toBe('Bearer sk-sp-test');
+		const parsedUrl = new URL(url);
+		expect(parsedUrl.searchParams.get('api')).toBe('queryCodingPlanInstanceInfoV2');
+		expect(parsedUrl.searchParams.get('currentRegionId')).toBe('ap-southeast-1');
+		expect(JSON.parse(body ?? '{}')).toEqual({
+			queryCodingPlanInstanceInfoRequest: { commodityCode: 'sfm_codingplan_public_intl' },
+		});
 	});
 
-	it('coerces non-numeric fields to 0', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_EMPTY },
-			'quota/limit': { status: 200, body: QUOTA_NON_NUMERIC },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		const session = snap.metrics.find((m) => m.kind === 'session')!;
-		expect(session.used).toBe(0);
-		const web = snap.metrics.find((m) => m.kind === 'web-searches')!;
-		expect(web.used).toBe(0);
-		expect(web.limit).toBe(0);
+	it('uses the china console host, region id, and commodity code for region=china', async () => {
+		cfg.region = 'china';
+		try {
+			const calls: Array<{ url: string; body?: string }> = [];
+			const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+				calls.push({ url: String(url), body: typeof init?.body === 'string' ? init.body : undefined });
+				return jsonResponse({
+					codingPlanQuotaInfo: { per5HourUsedQuota: 1, per5HourTotalQuota: 5 },
+				});
+			});
+			const client = new UsageClient('https://bailian.console.aliyun.com/data/api.json', fetchImpl as typeof fetch);
+			const snap = await client.fetchSnapshot('sk-sp-test');
+			expect(snap.status).toBe('ok');
+			const parsedUrl = new URL(calls[0].url);
+			expect(parsedUrl.searchParams.get('currentRegionId')).toBe('cn-beijing');
+			expect(JSON.parse(calls[0].body ?? '{}')).toEqual({
+				queryCodingPlanInstanceInfoRequest: { commodityCode: 'sfm_codingplan_public_cn' },
+			});
+		} finally {
+			cfg.region = 'international';
+		}
 	});
 
-	it('returns no-data when limits array is empty', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: QUOTA_EMPTY },
-		}));
-		const snap = await client.fetchSnapshot('k');
+	it('maps HTTP 401 from the console RPC to auth-error', async () => {
+		const fetchImpl = vi.fn(async () => jsonResponse({ message: 'unauthorized' }, 401));
+		const client = new UsageClient('https://modelstudio.console.alibabacloud.com/data/api.json', fetchImpl);
+		const snap = await client.fetchSnapshot('bad-key');
+		expect(snap.status).toBe('auth-error');
+	});
+
+	it('returns no-data when the RPC payload has no quota info', async () => {
+		const fetchImpl = vi.fn(async () => jsonResponse({ codingPlanInstanceInfos: [] }));
+		const client = new UsageClient('https://modelstudio.console.alibabacloud.com/data/api.json', fetchImpl);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('no-data');
 		expect(snap.metrics).toEqual([]);
 	});
+});
 
-	it('skips weekly and web-searches when absent (session only)', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: QUOTA_SESSION_ONLY },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		expect(snap.metrics.map((m) => m.kind)).toEqual(['session']);
-	});
+describe('UsageClient — cs-data gateway (official Qwen CLI path)', () => {
+	function csDataResponse(usage: Record<string, unknown>): unknown {
+		return {
+			code: '200',
+			successResponse: true,
+			data: {
+				success: true,
+				DataV2: {
+					ret: ['SUCCESS::ok'],
+					data: {
+						code: 'SUCCESS',
+						success: true,
+						data: usage,
+					},
+				},
+			},
+		};
+	}
 
-	it('swallows subscription failure and still renders quota', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 500, body: '' },
-			'quota/limit': { status: 200, body: QUOTA_SESSION_ONLY },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		expect(snap.status).toBe('ok');
-		expect(snap.planName).toBeUndefined();
-	});
-
-	it('maps HTTP 401 to auth-error', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 401, body: '' },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		expect(snap.status).toBe('auth-error');
-	});
-
-	it('maps HTTP 500 to server-error', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 500, body: '' },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		expect(snap.status).toBe('server-error');
-	});
-
-	it('maps network exception to network-error', async () => {
-		// Real undici fetch failures carry a `.cause` with a recognized `code` (ENOTFOUND, ECONNRESET, …).
-		// normalizeRequestError returns the original Error UNCHANGED when there is no cause, which our
-		// toErrorSnapshot would map to server-error. So the mock must mirror the real shape.
-		const networkError = Object.assign(new TypeError('fetch failed'), {
-			cause: { code: 'ENOTFOUND', name: 'Error', message: 'getaddrinfo ENOTFOUND api.z.ai' },
+	it('maps per1MonthPercentage to a session percent metric', async () => {
+		const calls: Array<{ url: string; method?: string; body?: string; contentType?: string }> = [];
+		const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+			calls.push({
+				url: String(url),
+				method: init?.method,
+				body: typeof init?.body === 'string' ? init.body : undefined,
+				contentType: (init?.headers as Record<string, string>)?.['Content-Type'],
+			});
+			return jsonResponse(csDataResponse({ per1MonthPercentage: 0.1438, per1MonthResetTime: 1761234567000 }));
 		});
-		const failing = vi.fn(async () => { throw networkError; }) as unknown as typeof fetch;
-		const client = new UsageClient('https://api.z.ai', failing);
-		const snap = await client.fetchSnapshot('k');
-		// subscription failure is swallowed; quota failure determines status
-		expect(snap.status).toBe('network-error');
-	});
+		const client = new UsageClient('https://cs-data.qianwenai.com/data/api.json', fetchImpl as typeof fetch);
+		const snap = await client.fetchSnapshot('sk-sp-test');
+		expect(snap.status).toBe('ok');
+		expect(snap.metrics).toHaveLength(1);
+		expect(snap.metrics[0]).toMatchObject({ kind: 'session', used: 14.4, limit: 100, resetsAt: 1761234567000 });
 
-	it('maps internal request timeout to network-error', async () => {
-		vi.useFakeTimers();
-		try {
-			const abortingFetch = vi.fn((_url: URL | string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-				init?.signal?.addEventListener('abort', () => {
-					reject(new DOMException('The operation was aborted.', 'AbortError'));
-				}, { once: true });
-			})) as unknown as typeof fetch;
-			const client = new UsageClient('https://api.z.ai', abortingFetch);
-			const snapshot = client.fetchSnapshot('k');
-			await vi.advanceTimersByTimeAsync(USAGE_REQUEST_TIMEOUT_MS);
-			await expect(snapshot).resolves.toMatchObject({ status: 'network-error' });
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('maps unparsable 2xx body to server-error', async () => {
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: 'not-json' },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		expect(snap.status).toBe('server-error');
-	});
-
-	it('web-searches resetsAt falls back to next UTC 1st-of-month when nextResetTime absent', async () => {
-		const quota = JSON.stringify({
-			code: 200,
-			data: { limits: [{ type: 'TIME_LIMIT', currentValue: 5, usage: 100 }] },
+		// Request shape: POST form-encoded with the official CLI envelope.
+		expect(calls).toHaveLength(1);
+		const { url, method, body, contentType } = calls[0];
+		expect(method).toBe('POST');
+		expect(contentType).toBe('application/x-www-form-urlencoded');
+		const parsedUrl = new URL(url);
+		expect(parsedUrl.pathname).toBe('/data/api.json');
+		expect(parsedUrl.searchParams.get('action')).toBe('BroadScopeAspnGateway');
+		expect(parsedUrl.searchParams.get('product')).toBe('sfm_bailian');
+		const form = new URLSearchParams(body ?? '');
+		const params = JSON.parse(form.get('params') ?? '{}') as {
+			Api?: string;
+			V?: string;
+			Data?: { cornerstoneParam?: Record<string, unknown> };
+		};
+		expect(params.Api).toBe('zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage');
+		expect(params.V).toBe('1.0');
+		expect(params.Data?.cornerstoneParam).toMatchObject({
+			protocol: 'V2',
+			console: 'ONE_CONSOLE',
+			consoleSite: 'QIANWENAI',
 		});
-		const client = new UsageClient('https://api.z.ai', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: quota },
-		}));
-		const snap = await client.fetchSnapshot('k');
-		const web = snap.metrics.find((m) => m.kind === 'web-searches')!;
-		const now = new Date();
-		const expected = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-		expect(web.resetsAt).toBe(expected);
-	});
-});
-
-describe('UsageClient auth scheme by station', () => {
-	beforeEach(() => vi.useRealTimers());
-
-	it('sends Bearer prefix for the international host (api.z.ai)', async () => {
-		const calls: { authorization?: string }[] = [];
-		const fetchImpl = vi.fn(async (url: URL | string, init?: RequestInit) => {
-			calls.push({ authorization: (init?.headers as Record<string, string>)?.Authorization });
-			return new Response(QUOTA_SESSION_ONLY, { status: 200, headers: { 'Content-Type': 'application/json' } });
-		}) as unknown as typeof fetch;
-		const client = new UsageClient('https://api.z.ai', fetchImpl);
-		await client.fetchSnapshot('my.key');
-		expect(calls.length).toBe(2);
-		for (const call of calls) {
-			expect(call.authorization).toBe('Bearer my.key');
-		}
+		expect(form.get('region')).toBe('cn-beijing');
 	});
 
-	it('sends the RAW key (no Bearer) for the china host (open.bigmodel.cn)', async () => {
-		const calls: { authorization?: string }[] = [];
-		const fetchImpl = vi.fn(async (url: URL | string, init?: RequestInit) => {
-			calls.push({ authorization: (init?.headers as Record<string, string>)?.Authorization });
-			return new Response(QUOTA_SESSION_ONLY, { status: 200, headers: { 'Content-Type': 'application/json' } });
-		}) as unknown as typeof fetch;
-		const client = new UsageClient('https://open.bigmodel.cn', fetchImpl);
-		await client.fetchSnapshot('my.key');
-		expect(calls.length).toBe(2);
-		for (const call of calls) {
-			expect(call.authorization).toBe('my.key');
-			expect(call.authorization).not.toContain('Bearer');
-		}
-	});
-});
-
-describe('UsageClient china station quota', () => {
-	beforeEach(() => vi.useRealTimers());
-
-	it('parses the china quota response identically (session + weekly + web-searches)', async () => {
-		const client = new UsageClient('https://open.bigmodel.cn', mockFetch({
-			'subscription/list': { status: 200, body: SUBSCRIPTION_OK },
-			'quota/limit': { status: 200, body: QUOTA_FULL },
-		}));
-		const snap = await client.fetchSnapshot('k');
+	it('maps per1WeekPercentage to a weekly metric alongside monthly', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse(csDataResponse({
+				per1WeekPercentage: 0.42,
+				per1WeekResetTime: 1761200000000,
+				per1MonthPercentage: 0.31,
+				per1MonthResetTime: 1761234567000,
+			})),
+		);
+		const client = new UsageClient('https://cs-data.qianwenai.com/data/api.json', fetchImpl);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('ok');
-		expect(snap.metrics.map((m) => m.kind)).toEqual(['session', 'weekly', 'web-searches']);
-		expect(snap.metrics[0]).toMatchObject({ used: 10, limit: 100, resetsAt: 1738368000000 });
-		expect(snap.metrics[1]).toMatchObject({ used: 10, limit: 100, resetsAt: 1738972800000 });
-		expect(snap.metrics[2]).toMatchObject({ used: 1095, limit: 4000 });
-	});
-});
-
-describe('UsageClient region resolution', () => {
-	beforeEach(() => vi.useRealTimers());
-
-	it('re-resolves the host per fetch so region changes are followed', async () => {
-		let currentHost = 'https://api.z.ai';
-		const seenUrls: string[] = [];
-		const fetchImpl = vi.fn(async (url: URL | string) => {
-			seenUrls.push(typeof url === 'string' ? url : url.toString());
-			return new Response(QUOTA_SESSION_ONLY, { status: 200, headers: { 'Content-Type': 'application/json' } });
-		}) as unknown as typeof fetch;
-		const client = new UsageClient(() => currentHost, fetchImpl);
-		await client.fetchSnapshot('k');
-		currentHost = 'https://open.bigmodel.cn';
-		await client.fetchSnapshot('k');
-		expect(seenUrls.some((u) => u.startsWith('https://api.z.ai'))).toBe(true);
-		expect(seenUrls.some((u) => u.startsWith('https://open.bigmodel.cn'))).toBe(true);
+		expect(snap.metrics).toHaveLength(2);
+		expect(snap.metrics[0]).toMatchObject({ kind: 'weekly', used: 42, limit: 100, resetsAt: 1761200000000 });
+		expect(snap.metrics[1]).toMatchObject({ kind: 'session', used: 31, limit: 100, resetsAt: 1761234567000 });
 	});
 
-	it('auth scheme follows the currently resolved host within one snapshot', async () => {
-		const authHeaders: string[] = [];
-		const fetchImpl = vi.fn(async (_url: URL | string, init?: RequestInit) => {
-			authHeaders.push((init?.headers as Record<string, string> | undefined)?.Authorization ?? '');
-			return new Response(QUOTA_SESSION_ONLY, { status: 200, headers: { 'Content-Type': 'application/json' } });
-		}) as unknown as typeof fetch;
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', fetchImpl);
-		await client.fetchSnapshot('raw-key');
-		expect(authHeaders.length).toBe(2);
-		for (const header of authHeaders) {
-			expect(header).toBe('raw-key');
-		}
-	});
-});
-
-describe('UsageClient.fetchBalance (Standard API balance)', () => {
-	beforeEach(() => vi.useRealTimers());
-
-	const ACCOUNT_OK = JSON.stringify({
-		success: true,
-		data: {
-			balance: 42.5,
-			rechargeAmount: 100,
-			giveAmount: 10,
-			totalSpendAmount: 67.5,
-			frozenBalance: 0,
-			availableBalance: 42.5,
-		},
-	});
-	const ACCOUNT_EMPTY = JSON.stringify({ success: true, data: {} });
-	const TOKEN_PACKAGES_OK = JSON.stringify({
-		code: 200,
-		rows: [
-			{ tokenBalance: 800, tokensMagnitude: 10000, status: 'EFFECTIVE', resourcePackageName: 'GLM-5.2 Pack', suitableModel: 'glm-5.2' },
-			{ tokenBalance: 500, tokensMagnitude: 1000, status: 'EXPIRED', resourcePackageName: 'Old Pack', suitableModel: 'glm-4.6' },
-		],
-	});
-	const TOKEN_PACKAGES_EMPTY = JSON.stringify({ code: 200, rows: [] });
-
-	it('parses cash balance and effective token packages', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 200, body: ACCOUNT_OK },
-			'tokenAccounts/list/my': { status: 200, body: TOKEN_PACKAGES_OK },
-		}));
-		const snap = await client.fetchBalance('k');
+	it('falls back to the next endpoint when the cs-data gateway rejects the key (401)', async () => {
+		const urls: string[] = [];
+		const fetchImpl = vi.fn(async (url: string) => {
+			urls.push(String(url));
+			if (String(url).includes('cs-data.qianwenai.com')) {
+				return jsonResponse({ code: '401', message: 'Unauthorized' }, 401);
+			}
+			return jsonResponse({
+				codingPlanQuotaInfo: { per5HourUsedQuota: 10, per5HourTotalQuota: 60 },
+			});
+		});
+		const client = new UsageClient(
+			() => [
+				'https://cs-data.qianwenai.com/data/api.json',
+				'https://modelstudio.console.alibabacloud.com/data/api.json',
+			],
+			fetchImpl as typeof fetch,
+		);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('ok');
-		expect(snap.balance).toBeDefined();
-		expect(snap.balance!.availableCash).toBe(42.5);
-		expect(snap.balance!.totalRecharged).toBe(100);
-		expect(snap.balance!.totalSpent).toBe(67.5);
-		expect(snap.balance!.giftedAmount).toBe(10);
-		expect(snap.balance!.tokenPackages).toHaveLength(2);
-		expect(snap.balance!.tokenPackages[0]).toMatchObject({ name: 'GLM-5.2 Pack', remainingTokens: 800, magnitude: 10000, model: 'glm-5.2' });
+		expect(snap.metrics[0]).toMatchObject({ used: 10, limit: 60 });
+		expect(urls).toHaveLength(2);
 	});
 
-	it('returns ok with cash only when token packages endpoint returns empty', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 200, body: ACCOUNT_OK },
-			'tokenAccounts/list/my': { status: 200, body: TOKEN_PACKAGES_EMPTY },
-		}));
-		const snap = await client.fetchBalance('k');
-		expect(snap.status).toBe('ok');
-		expect(snap.balance!.tokenPackages).toEqual([]);
-		expect(snap.balance!.availableCash).toBe(42.5);
-	});
-
-	it('returns ok with packages only when account report has no data', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 200, body: ACCOUNT_EMPTY },
-			'tokenAccounts/list/my': { status: 200, body: TOKEN_PACKAGES_OK },
-		}));
-		const snap = await client.fetchBalance('k');
-		expect(snap.status).toBe('ok');
-		expect(snap.balance!.availableCash).toBeUndefined();
-		expect(snap.balance!.tokenPackages.length).toBeGreaterThan(0);
-	});
-
-	it('returns no-data when both endpoints return empty', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 200, body: ACCOUNT_EMPTY },
-			'tokenAccounts/list/my': { status: 200, body: TOKEN_PACKAGES_EMPTY },
-		}));
-		const snap = await client.fetchBalance('k');
+	it('treats NotLogined gateway errors as no-data, not a hard failure', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				code: '200',
+				successResponse: true,
+				data: { success: false, errorCode: 'BailianGateway.Login.NotLogined' },
+			}),
+		);
+		const client = new UsageClient('https://cs-data.qianwenai.com/data/api.json', fetchImpl);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('no-data');
 	});
+});
 
-	it('maps HTTP 401 on account report to auth-error', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 401, body: '' },
-			'tokenAccounts/list/my': { status: 200, body: TOKEN_PACKAGES_OK },
-		}));
-		const snap = await client.fetchBalance('k');
-		expect(snap.status).toBe('auth-error');
-	});
-
-	it('survives token packages failure (non-fatal), still shows cash', async () => {
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', mockFetch({
-			'query-customer-account-report': { status: 200, body: ACCOUNT_OK },
-			'tokenAccounts/list/my': { status: 500, body: '' },
-		}));
-		const snap = await client.fetchBalance('k');
+describe('UsageClient — custom override endpoint', () => {
+	it('tries the console-RPC shape first, then cs-data, on an unknown host', async () => {
+		// One fetch, one payload: the console-RPC parse finds no quota info and defers to
+		// the cs-data envelope parser, which recognizes the layered usage shape.
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				code: '200',
+				data: {
+					success: true,
+					DataV2: {
+						ret: ['SUCCESS::ok'],
+						data: { code: 'SUCCESS', success: true, data: { per1WeekPercentage: 0.5 } },
+					},
+				},
+			}),
+		);
+		const client = new UsageClient('https://my-proxy.example/usage', fetchImpl as typeof fetch);
+		const snap = await client.fetchSnapshot('sk-sp-test');
 		expect(snap.status).toBe('ok');
-		expect(snap.balance!.availableCash).toBe(42.5);
-		expect(snap.balance!.tokenPackages).toEqual([]);
-	});
-
-	it('uses raw key auth (no Bearer) for bigmodel.cn balance endpoints', async () => {
-		const authHeaders: string[] = [];
-		const fetchImpl = vi.fn(async (url: URL | string, init?: RequestInit) => {
-			authHeaders.push((init?.headers as Record<string, string>)?.Authorization);
-			const path = typeof url === 'string' ? url : url.toString();
-			if (path.includes('query-customer-account-report')) {
-				return new Response(ACCOUNT_OK, { status: 200, headers: { 'Content-Type': 'application/json' } });
-			}
-			return new Response(TOKEN_PACKAGES_OK, { status: 200, headers: { 'Content-Type': 'application/json' } });
-		}) as unknown as typeof fetch;
-		const client = new UsageClient(() => 'https://open.bigmodel.cn', fetchImpl);
-		await client.fetchBalance('raw-key');
-		expect(authHeaders.length).toBe(2);
-		for (const h of authHeaders) {
-			expect(h).toBe('raw-key');
-			expect(h).not.toContain('Bearer');
-		}
+		expect(snap.metrics[0]).toMatchObject({ kind: 'weekly', used: 50, limit: 100 });
+		expect(fetchImpl).toHaveBeenCalledTimes(1);
 	});
 });
+

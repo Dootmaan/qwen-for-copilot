@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { LANGUAGE_MODEL_CHAT_SYSTEM_ROLE } from '../consts';
 import { safeStringify } from '../json';
-import type { GLMMessage, GLMTool, GLMToolCall } from '../types';
+import type { QwenMessage, QwenTool, QwenToolCall } from '../types';
 
 /**
  * A `LanguageModelThinkingPart`-shaped value. The thinking part is a proposed
@@ -17,17 +17,17 @@ interface PendingToolResult {
 	content: string;
 }
 
-/** Convert VS Code chat messages to GLM (OpenAI-compatible) wire messages. */
+/** Convert VS Code chat messages to Qwen (OpenAI-compatible) wire messages. */
 export function convertMessages(
 	messages: readonly vscode.LanguageModelChatRequestMessage[],
 	isThinkingModel: boolean,
-): GLMMessage[] {
-	const result: GLMMessage[] = [];
+): QwenMessage[] {
+	const result: QwenMessage[] = [];
 	for (const message of messages) {
 		const role = mapRole(message.role);
 		let content = '';
 		let thinkingContent = '';
-		const toolCalls: GLMToolCall[] = [];
+		const toolCalls: QwenToolCall[] = [];
 		const toolResults: PendingToolResult[] = [];
 		for (const part of message.content) {
 			if (part instanceof vscode.LanguageModelTextPart) {
@@ -58,7 +58,7 @@ export function convertMessages(
 		}
 		if (role === 'assistant') {
 			if (content || toolCalls.length > 0) {
-				const msg: GLMMessage = {
+				const msg: QwenMessage = {
 					role: 'assistant',
 					content: content || '',
 				};
@@ -87,7 +87,7 @@ export function convertMessages(
 	return result;
 }
 
-/** Map a VS Code message role to a GLM role. GLM is OpenAI-compatible, so
+/** Map a VS Code message role to a Qwen role. Qwen is OpenAI-compatible, so
  * the system role maps to `'system'`. */
 export function mapRole(role: vscode.LanguageModelChatMessageRole): 'system' | 'user' | 'assistant' {
 	const value = role as number;
@@ -100,8 +100,8 @@ export function mapRole(role: vscode.LanguageModelChatMessageRole): 'system' | '
 	return 'user';
 }
 
-/** Convert VS Code tool definitions to GLM tool definitions. */
-export function convertTools(tools: readonly vscode.LanguageModelChatTool[]): GLMTool[] {
+/** Convert VS Code tool definitions to Qwen tool definitions. */
+export function convertTools(tools: readonly vscode.LanguageModelChatTool[]): QwenTool[] {
 	return tools.map((tool) => ({
 		type: 'function',
 		function: {
@@ -113,7 +113,7 @@ export function convertTools(tools: readonly vscode.LanguageModelChatTool[]): GL
 }
 
 /** Sum content, reasoning, and tool-call chars to calibrate chars-per-token. */
-export function countMessageChars(messages: GLMMessage[]): number {
+export function countMessageChars(messages: QwenMessage[]): number {
 	let total = 0;
 	for (const message of messages) {
 		total += message.content?.length ?? 0;

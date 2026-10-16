@@ -1,74 +1,79 @@
-import type { GLMModel, ThinkingEffortSpec } from './types';
+import type { QwenModel, ThinkingEffortSpec } from './types';
 
-/**
- * Compile-time constants shared across the extension. These do not depend on
- * the VS Code runtime. For run-time settings reads see `config.ts`.
- */
-
-/** VS Code configuration section prefix for all extension settings. */
-export const CONFIG_SECTION = 'glm-copilot';
-
-/** Provider vendor id, must match `contributes.languageModelChatProviders`. */
-export const VENDOR_ID = 'glm';
-
-/** SecretStorage key for the GLM API key. */
-export const API_KEY_SECRET = 'glm-copilot.apiKey';
-
-/** Memento key tracking whether the welcome walkthrough has been shown. */
-export const WELCOME_SHOWN_KEY = 'glm-copilot.welcomeShown';
-
-/** Walkthrough contribution id (without the publisher.extension prefix). */
-export const WALKTHROUGH_ID = 'glmGettingStarted';
-
-/** VS Code's internal LanguageModelChatMessageRole.System (not in @types/vscode). */
+export const CONFIG_SECTION = 'qwen-copilot';
+export const VENDOR_ID = 'qwen-copilot';
+export const API_KEY_SECRET = 'qwen-copilot.apiKey';
+export const WELCOME_SHOWN_KEY = 'qwen-copilot.welcomeShown';
+export const WALKTHROUGH_ID = 'qwenGettingStarted';
 export const LANGUAGE_MODEL_CHAT_SYSTEM_ROLE = 3;
-
-/** Default maximum number of tools accepted in one request. */
 export const DEFAULT_TOOLS_LIMIT = 128;
 
-/** Base hostnames + endpoint paths for each API mode × region. */
-export const ENDPOINTS = {
-	codingPlanInternational: 'https://api.z.ai/api/coding/paas/v4',
-	codingPlanChina: 'https://open.bigmodel.cn/api/coding/paas/v4',
-	standardInternational: 'https://api.z.ai/api/paas/v4',
-	standardChina: 'https://open.bigmodel.cn/api/paas/v4',
-} as const;
-
-/** External URLs the extension links to. */
-export const EXTERNAL_URLS = {
-	codingPlanKeysInternational: 'https://z.ai/manage-apikey/subscription',
-	codingPlanKeysChina: 'https://bigmodel.cn/coding-plan/personal/overview',
-	standardKeysInternational: 'https://z.ai/manage-apikey/apikey-list',
-	standardKeysChina: 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys',
-	docs: 'https://docs.z.ai',
-} as const;
-
 /**
- * Host roots for the usage + balance APIs. Both stations expose the same paths
- * (USAGE_PATHS + BALANCE_PATHS) and JSON shapes; only the host differs.
+ * OpenAI-compatible endpoints.
  *
- * Auth scheme: the China (open.bigmodel.cn) monitor endpoint uses the RAW API key
- * (no `Bearer` prefix); z.ai and all balance endpoints use `Bearer {key}`.
- * Handled in `UsageClient.authHeader` via host detection.
+ * Token Plan docs:
+ * https://platform.qianwenai.com/docs/token-plan/personal/token-plan-personal-quickstart
  */
-export const USAGE_HOSTS = {
-	international: 'https://api.z.ai',
-	china: 'https://open.bigmodel.cn',
+export const ENDPOINTS = {
+	codingPlanInternational: 'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
+	codingPlanChina: 'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
+	standardInternational: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+	standardChina: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 } as const;
 
-/** Paths for the Coding Plan usage API (subscription + quota). Both stations use the same paths. */
-export const USAGE_PATHS = {
-	subscription: '/api/biz/subscription/list',
-	quota: '/api/monitor/usage/quota/limit',
+export const EXTERNAL_URLS = {
+	codingPlanKeysInternational: 'https://platform.qianwenai.com/home/api-keys',
+	codingPlanKeysChina: 'https://platform.qianwenai.com/home/api-keys',
+	standardKeysInternational: 'https://platform.qianwenai.com/docs/api-reference/preparation/api-key',
+	standardKeysChina: 'https://help.aliyun.com/zh/model-studio/get-api-key',
+	docs: 'https://platform.qianwenai.com/docs',
+	tokenPlanDashboardInternational: 'https://platform.qianwenai.com/home/analytics/token-plan/individual',
+	tokenPlanDashboardChina: 'https://platform.qianwenai.com/home/analytics/token-plan/individual',
 } as const;
 
 /**
- * Paths for the Standard API balance query. Both stations expose the same endpoints
- * and JSON shapes. Coding Plan uses USAGE_PATHS; Standard API uses BALANCE_PATHS.
+ * Token Plan usage — dual-source strategy.
+ *
+ * (A) cs-data gateway (official path used by the Qwen CLI, `QianWen-AI/qianwen-cli`):
+ *     POST https://cs-data.qianwenai.com/data/api.json
+ *     `?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/<route>`
+ *     Form-encoded body: `params` (JSON envelope with `cornerstoneParam`) + `region=cn-beijing`.
+ *     The CLI authenticates with an OAuth-derived bearer token; the API key may be rejected —
+ *     in that case we fall through to (B).
+ * (B) Alibaba Model Studio console RPC (works with `sk-sp-` Token Plan API keys):
+ *     POST https://modelstudio.console.alibabacloud.com/data/api.json (international)
+ *     POST https://bailian.console.aliyun.com/data/api.json (china)
+ *     `?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2`
+ *     `&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=<region>`
+ *
+ * Both are stored as full request URLs; `UsageClient` derives the request shape from the URL.
  */
-export const BALANCE_PATHS = {
-	accountReport: '/api/biz/account/query-customer-account-report',
-	tokenAccounts: '/api/biz/tokenAccounts/list/my',
+export const TOKEN_PLAN_USAGE_ENDPOINTS = {
+	csDataGateway: 'https://cs-data.qianwenai.com/data/api.json',
+	consoleRpcInternational: 'https://modelstudio.console.alibabacloud.com/data/api.json',
+	consoleRpcChina: 'https://bailian.console.aliyun.com/data/api.json',
+} as const;
+
+/** cs-data gateway envelope constants (mirror of the official web console's gateway client). */
+export const CSDATA_GATEWAY = {
+	action: 'BroadScopeAspnGateway',
+	product: 'sfm_bailian',
+	region: 'cn-beijing',
+	apiUsage: 'zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage',
+	apiSubscription: 'zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/subscription',
+	apiQuotaConfig: 'zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/quota-config',
+	subscriptionCommodityCode: 'sfm_tokenplansolo_public_cn',
+} as const;
+
+/** Alibaba Model Studio console RPC constants (queryCodingPlanInstanceInfoV2). */
+export const CONSOLE_RPC = {
+	action: 'zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2',
+	product: 'broadscope-bailian',
+	api: 'queryCodingPlanInstanceInfoV2',
+	internationalRegion: 'ap-southeast-1',
+	chinaRegion: 'cn-beijing',
+	commodityCodeInternational: 'sfm_codingplan_public_intl',
+	commodityCodeChina: 'sfm_codingplan_public_cn',
 } as const;
 
 export const USAGE_MIN_REFRESH_MINUTES = 1;
@@ -78,83 +83,96 @@ export const USAGE_CACHE_STALE_MS = 60 * 60 * 1000;
 export const USAGE_MANUAL_DEBOUNCE_MS = 30 * 1000;
 export const USAGE_REQUEST_TIMEOUT_MS = 10_000;
 
-/** Default automatic retries (after the initial attempt) for transient GLM API failures (429 / 5xx). */
 export const RETRY_DEFAULT_MAX_RETRIES = 3;
-/** Highest value accepted from the `maxRetries` setting. */
 export const RETRY_MAX_RETRIES_CEILING = 10;
-/** Base delay (ms) for the first retry; doubles each attempt up to RETRY_MAX_DELAY_MS. */
 export const RETRY_BASE_DELAY_MS = 1000;
-/** Upper bound (ms) for a single backoff sleep, even when Retry-After is larger. */
 export const RETRY_MAX_DELAY_MS = 10_000;
 
-/** URI paths handled by this extension (onUri activation). */
 export const URI_PATHS = {
 	setApiKey: '/setApiKey',
 	showLogs: '/showLogs',
 } as const;
 
-const GLM_5_2_EFFORT: ThinkingEffortSpec = { levels: ['none', 'high', 'max'], default: 'high' };
+const QWEN_REASONING_EFFORT: ThinkingEffortSpec = {
+	levels: ['none', 'high', 'max'],
+	default: 'high',
+};
 
-/** Built-in GLM models exposed through the language model provider. */
-export const MODELS: GLMModel[] = [
-	{
-		id: 'glm-4.7',
-		name: 'GLM-4.7',
-		family: 'glm',
-		version: '4.7',
-		detail: 'Legacy model',
-		maxInputTokens: 200000,
-		maxOutputTokens: 128000,
-		capabilities: { toolCalling: DEFAULT_TOOLS_LIMIT, imageInput: false, thinking: true },
-		availableIn: ['coding-plan', 'standard'],
-	},
-	{
-		id: 'glm-5',
-		name: 'GLM-5',
-		family: 'glm',
-		version: '5',
-		detail: 'Legacy model',
-		maxInputTokens: 200000,
-		maxOutputTokens: 128000,
-		capabilities: { toolCalling: DEFAULT_TOOLS_LIMIT, imageInput: false, thinking: true },
-		availableIn: ['standard'],
-	},
-	{
-		id: 'glm-5.1',
-		name: 'GLM-5.1',
-		family: 'glm',
-		version: '5.1',
-		detail: 'Legacy model',
-		maxInputTokens: 200000,
-		maxOutputTokens: 128000,
-		capabilities: { toolCalling: DEFAULT_TOOLS_LIMIT, imageInput: false, thinking: true },
-		availableIn: ['standard'],
-	},
-	{
-		id: 'glm-5.2',
-		name: 'GLM-5.2',
-		family: 'glm',
-		version: '5.2',
-		detail: 'Flagship coding model, 1M context',
-		maxInputTokens: 1000000,
-		maxOutputTokens: 128000,
+function textModel(
+	id: string,
+	overrides: Partial<
+		QwenModel['capabilities'] &
+			Pick<QwenModel, 'name' | 'detail' | 'maxInputTokens' | 'maxOutputTokens'>
+	> = {},
+): QwenModel {
+	return {
+		id,
+		name: overrides.name ?? id,
+		family: id.split(/[-.]/)[0] || 'qwen',
+		version: 'token-plan',
+		detail: overrides.detail ?? 'Token Plan model',
+		maxInputTokens: overrides.maxInputTokens ?? 262144,
+		maxOutputTokens: overrides.maxOutputTokens ?? 32768,
 		capabilities: {
 			toolCalling: DEFAULT_TOOLS_LIMIT,
-			imageInput: false,
-			thinking: true,
-			thinkingEffort: GLM_5_2_EFFORT,
+			imageInput: overrides.imageInput === true,
+			thinking: overrides.thinking === true,
+			thinkingEffort: overrides.thinking === true ? QWEN_REASONING_EFFORT : undefined,
 		},
 		availableIn: ['coding-plan', 'standard'],
-	},
-	{
-		id: 'glm-4.5-air',
-		name: 'GLM-4.5 Air',
-		family: 'glm',
-		version: '4.5',
-		detail: 'Legacy model',
-		maxInputTokens: 128000,
-		maxOutputTokens: 96000,
-		capabilities: { toolCalling: DEFAULT_TOOLS_LIMIT, imageInput: false, thinking: true },
-		availableIn: ['coding-plan', 'standard'],
-	},
+	};
+}
+
+/**
+ * Built-in text-capable models from the current Token Plan supported list.
+ * Source: platform.qianwenai.com token-plan overview + official model-spec pages.
+ *
+ * Context windows (official specs):
+ * - qwen3.8/3.7 flagship: 1M total context — 983K input (thinking-mode safe) / 131K output.
+ * - qwen3.6-flash: 262K context (verified via qwen-code model presets).
+ * - glm-5.3/5.2: 1M context — 1M input / 128K output.
+ * - deepseek v4 family: 256K context family — 262K input / 32K output.
+ */
+export const MODELS: QwenModel[] = [
+	textModel('auto', {
+		name: 'Auto',
+		detail: 'Token Plan automatic routing',
+		maxInputTokens: 983000,
+		maxOutputTokens: 131000,
+	}),
+	textModel('qwen3.8-max', {
+		thinking: true,
+		imageInput: true,
+		maxInputTokens: 983000,
+		maxOutputTokens: 131000,
+	}),
+	textModel('qwen3.8-flash', {
+		thinking: true,
+		imageInput: true,
+		maxInputTokens: 983000,
+		maxOutputTokens: 131000,
+	}),
+	textModel('qwen3.7-max', {
+		thinking: true,
+		maxInputTokens: 983000,
+		maxOutputTokens: 131000,
+	}),
+	textModel('qwen3.7-plus', {
+		thinking: true,
+		imageInput: true,
+		maxInputTokens: 983000,
+		maxOutputTokens: 131000,
+	}),
+	textModel('qwen3.6-flash', {
+		thinking: true,
+		imageInput: true,
+		maxInputTokens: 262144,
+		maxOutputTokens: 32768,
+	}),
+	textModel('deepseek-v4-pro', { maxInputTokens: 262144, maxOutputTokens: 32768 }),
+	textModel('deepseek-v4-pro-0813', { maxInputTokens: 262144, maxOutputTokens: 32768 }),
+	textModel('deepseek-v4-flash-0731', { maxInputTokens: 262144, maxOutputTokens: 32768 }),
+	textModel('deepseek-v4.1-flash', { imageInput: true, maxInputTokens: 262144, maxOutputTokens: 32768 }),
+	textModel('glm-5.3', { maxInputTokens: 1000000, maxOutputTokens: 128000 }),
+	textModel('glm-5.2', { maxInputTokens: 1000000, maxOutputTokens: 128000 }),
 ];

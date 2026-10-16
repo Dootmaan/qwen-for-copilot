@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { createUserFacingError } from '../client';
 import { t } from '../i18n';
 import { logger } from '../logger';
-import type { GLMToolCall, GLMUsage, RetryBackoffInfo, StreamCallbacks } from '../types';
+import type { QwenToolCall, QwenUsage, RetryBackoffInfo, StreamCallbacks } from '../types';
 import type { PreparedChatRequest } from './request';
 
 const USAGE_DATA_PART_MIME = 'usage';
@@ -15,7 +15,7 @@ interface StreamChatCompletionArgs {
 	setCharsPerToken: (value: number) => void;
 }
 
-/** Drive the GLM stream and forward parts to Copilot Chat. */
+/** Drive the Qwen stream and forward parts to Copilot Chat. */
 export async function streamChatCompletion({
 	prepared,
 	progress,
@@ -77,7 +77,7 @@ function reportThinking(
 
 function reportToolCall(
 	progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-	toolCall: GLMToolCall,
+	toolCall: QwenToolCall,
 ): void {
 	let args: object;
 	try {
@@ -92,7 +92,7 @@ function reportToolCall(
 
 function updateCharsPerToken(
 	totalRequestChars: number,
-	usage: GLMUsage,
+	usage: QwenUsage,
 	getCharsPerToken: () => number,
 	setCharsPerToken: (value: number) => void,
 ): void {
@@ -105,7 +105,7 @@ function updateCharsPerToken(
 
 function reportUsage(
 	progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-	usage: GLMUsage,
+	usage: QwenUsage,
 ): void {
 	const data = {
 		prompt_tokens: usage.prompt_tokens,

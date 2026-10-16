@@ -51,8 +51,8 @@ body:
     id: model
     attributes:
       label: Model
-      description: Which GLM model did you select in the picker?
-      placeholder: GLM-5.2
+      description: Which Qwen model did you select in the picker?
+      placeholder: Qwen-5.2
     validations:
       required: true
   - type: textarea
@@ -60,8 +60,8 @@ body:
     attributes:
       label: Logs
       description: >
-        Enable `glm-copilot.debugLogging`, reproduce, then paste the output of
-        **GLM: Show Logs**. Remove your API key and any private content first.
+        Enable `qwen-copilot.debugLogging`, reproduce, then paste the output of
+        **Qwen: Show Logs**. Remove your API key and any private content first.
       render: shell
   - type: input
     id: versions

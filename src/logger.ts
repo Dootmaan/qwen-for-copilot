@@ -6,7 +6,7 @@ class Logger {
 
 	private get output(): vscode.LogOutputChannel {
 		if (!this.channel) {
-			this.channel = vscode.window.createOutputChannel('GLM', { log: true });
+			this.channel = vscode.window.createOutputChannel('Qwen', { log: true });
 		}
 		return this.channel;
 	}

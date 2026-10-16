@@ -8,7 +8,7 @@ function view(m: Omit<UsageMetricView, 'label' | 'window' | 'resetsAt'>): UsageM
 }
 
 const strings: UsagePanelStrings = {
-	title: 'GLM Usage',
+	title: 'Qwen Usage',
 	refresh: 'Refresh',
 	setKey: 'Set API Key',
 	offline: 'Offline · showing last data',
@@ -33,7 +33,7 @@ describe('buildUsageMessage', () => {
 
 	it('maps ok with all three metrics, ordered session/weekly/web-searches', () => {
 		const snap: UsageSnapshot = {
-			status: 'ok', fetchedAt: 1_000_000, planName: 'GLM Coding Max', renewsAt: '2026-03-12',
+			status: 'ok', fetchedAt: 1_000_000, planName: 'Qwen Coding Max', renewsAt: '2026-03-12',
 			metrics: [
 				{ kind: 'session', used: 15, limit: 100, resetsAt: 2_000_000 },
 				{ kind: 'weekly', used: 3, limit: 100, resetsAt: 3_000_000 },
@@ -42,7 +42,7 @@ describe('buildUsageMessage', () => {
 		};
 		const msg = buildUsageMessage(snap, false, strings, 'dark', '$');
 		expect(msg?.status).toBe('ok');
-		expect(msg?.planName).toBe('GLM Coding Max');
+		expect(msg?.planName).toBe('Qwen Coding Max');
 		expect(msg?.renewsAt).toBe('2026-03-12');
 		expect(msg?.offline).toBe(false);
 		expect(msg?.theme).toBe('dark');

@@ -12,7 +12,7 @@ import { formatAmount, formatTokens } from './format';
 import { usagePanelStrings } from './usage-strings';
 
 /**
- * Status-bar item showing GLM usage/balance. Coding Plan shows session/weekly/web-search quota;
+ * Status-bar item showing Qwen usage/balance. Coding Plan shows session/weekly/web-search quota;
  * Standard API shows cash balance + token packages. Both apiModes × both regions are supported.
  * Constructed inside `registerProvider` (where AuthManager lives). Registers its own refresh command.
  *
@@ -41,19 +41,19 @@ export class UsageStatusBar implements vscode.Disposable {
 		this.auth = auth;
 		this.client = client;
 		this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-		this.item.command = 'glm-copilot.openUsageDetail';
-		this.item.name = 'GLM Usage';
+		this.item.command = 'qwen-copilot.openUsageDetail';
+		this.item.name = 'Qwen Usage';
 
 		context.subscriptions.push(
 			this.item,
-			vscode.commands.registerCommand('glm-copilot.refreshUsage', () => {
+			vscode.commands.registerCommand('qwen-copilot.refreshUsage', () => {
 				void this.refresh();
 			}),
-			vscode.commands.registerCommand('glm-copilot.openUsageDetail', () => {
+			vscode.commands.registerCommand('qwen-copilot.openUsageDetail', () => {
 				UsageDetailPanel.createOrShow(context, this);
 			}),
 			vscode.workspace.onDidChangeConfiguration((event) => {
-				if (event.affectsConfiguration('glm-copilot')) {
+				if (event.affectsConfiguration('qwen-copilot')) {
 					void this.onConfigOrKeyChange().catch((error) => logger.warn('Usage gate check failed', error));
 				}
 			}),
@@ -130,9 +130,7 @@ export class UsageStatusBar implements vscode.Disposable {
 	 * both regions are eligible — the usage/balance endpoints exist on both stations.
 	 */
 	private async evaluateGate(): Promise<{ passed: true; apiKey: string } | { passed: false }> {
-		// Both apiModes (Coding Plan + Standard API) and both regions (z.ai + bigmodel.cn) are
-		// supported. The usage/balance endpoints exist on both stations' biz gateways and share
-		// the same JSON shape. Only gate on baseUrl override, opt-in, and key presence.
+		// Gate only on baseUrl override, opt-in, and key presence.
 		if (
 			getBaseUrlOverride() !== '' ||
 			!getShowUsageStatusBar()
@@ -174,7 +172,7 @@ export class UsageStatusBar implements vscode.Disposable {
 
 		switch (effective.status) {
 			case 'loading':
-				this.item.text = '$(pulse) GLM';
+				this.item.text = '$(pulse) Qwen';
 				this.item.tooltip = t('usage.status.loading');
 				this.item.show();
 				break;
@@ -182,18 +180,18 @@ export class UsageStatusBar implements vscode.Disposable {
 				this.renderOkBar(effective, offline);
 				break;
 			case 'no-data':
-				this.item.text = '$(dash) GLM';
+				this.item.text = '$(dash) Qwen';
 				this.item.tooltip = t('usage.status.no-data');
 				this.item.show();
 				break;
 			case 'auth-error':
-				this.item.text = '$(warning) GLM';
+				this.item.text = '$(warning) Qwen';
 				this.item.tooltip = t('usage.status.auth-error');
 				this.item.show();
 				break;
 			case 'network-error':
 			case 'server-error':
-				this.item.text = snapshot.status === 'network-error' ? '$(plug) GLM' : '$(warning) GLM';
+				this.item.text = snapshot.status === 'network-error' ? '$(plug) Qwen' : '$(warning) Qwen';
 				this.item.tooltip =
 					snapshot.status === 'network-error' ? t('usage.status.network-error') : t('usage.status.server-error');
 				this.item.show();
@@ -211,9 +209,9 @@ export class UsageStatusBar implements vscode.Disposable {
 		}
 		const primary = snapshot.metrics.find((m) => m.kind === 'session') ?? snapshot.metrics[0];
 		if (!primary) {
-			this.item.text = '$(sparkle) GLM';
+			this.item.text = '$(sparkle) Qwen';
 		} else if (primary.kind === 'web-searches') {
-			this.item.text = `$(sparkle) GLM ${primary.used} / ${primary.limit}`;
+			this.item.text = `$(sparkle) Qwen ${primary.used} / ${primary.limit}`;
 		} else {
 			this.item.text = t('usage.status.ok.short', String(primary.used));
 		}
@@ -259,13 +257,13 @@ export class UsageStatusBar implements vscode.Disposable {
 		const currency = getRegion() === 'china' ? '¥' : '$';
 
 		if (cash !== undefined && totalTokens > 0) {
-			this.item.text = `$(wallet) GLM ${currency}${formatAmount(cash)} · ${formatTokens(totalTokens)}`;
+			this.item.text = `$(wallet) Qwen ${currency}${formatAmount(cash)} · ${formatTokens(totalTokens)}`;
 		} else if (cash !== undefined) {
-			this.item.text = `$(wallet) GLM ${currency}${formatAmount(cash)}`;
+			this.item.text = `$(wallet) Qwen ${currency}${formatAmount(cash)}`;
 		} else if (totalTokens > 0) {
-			this.item.text = `$(sparkle) GLM ${formatTokens(totalTokens)}`;
+			this.item.text = `$(sparkle) Qwen ${formatTokens(totalTokens)}`;
 		} else {
-			this.item.text = '$(dash) GLM';
+			this.item.text = '$(dash) Qwen';
 		}
 
 		const lines: string[] = [];

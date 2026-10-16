@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import { GLMClient } from '../client';
+import { QwenClient } from '../client';
 import { findModelDefinition, getApiModelId, getMaxRetries, getMaxTokens, getThinking } from '../config';
 import { DEFAULT_TOOLS_LIMIT } from '../consts';
 import { resolveBaseUrl } from '../endpoint';
 import { t } from '../i18n';
 import type {
-	GLMChatRequest,
-	GLMTool,
+	QwenChatRequest,
+	QwenTool,
 	IAuthManager,
-	IGLMClient,
+	IQwenClient,
 	ThinkingEffort,
 	ThinkingEffortSpec,
 	ThinkingMode,
@@ -25,13 +25,13 @@ interface PrepareChatRequestArgs {
 }
 
 export interface PreparedChatRequest {
-	client: IGLMClient;
-	request: GLMChatRequest;
+	client: IQwenClient;
+	request: QwenChatRequest;
 	totalRequestChars: number;
 	isThinkingModel: boolean;
 }
 
-/** Build the GLM client and request body for one Copilot Chat turn. */
+/** Build the Qwen client and request body for one Copilot Chat turn. */
 export async function prepareChatRequest({
 	authManager,
 	extensionVersion,
@@ -44,29 +44,32 @@ export async function prepareChatRequest({
 		throw new Error(t('auth.notConfigured'));
 	}
 	const baseUrl = resolveBaseUrl();
-	const client = new GLMClient(baseUrl, apiKey, extensionVersion, getMaxRetries());
+	const client = new QwenClient(baseUrl, apiKey, extensionVersion, getMaxRetries());
 	const modelDef = findModelDefinition(modelInfo.id);
-	const isThinkingModel = modelDef?.capabilities.thinking ?? false;
-	const toolCalling = modelDef?.capabilities.toolCalling ?? false;
+	const isThinkingModel = modelDef?.capabilities.thinking === true && isQwenFamilyModel(modelInfo.id);
+	const toolCalling = modelInfo.capabilities.toolCalling ?? modelDef?.capabilities.toolCalling ?? false;
 	const toolLimit = typeof toolCalling === 'number' ? toolCalling : DEFAULT_TOOLS_LIMIT;
 	const glmMessages = convertMessages(messages, isThinkingModel);
-	const tools: GLMTool[] | undefined = toolCalling ? convertTools(options.tools ?? []) : undefined;
+	const tools: QwenTool[] | undefined = toolCalling ? convertTools(options.tools ?? []) : undefined;
 	if (tools && tools.length > toolLimit) {
 		throw new Error(t('request.toolsLimitExceeded', String(toolLimit), String(tools.length)));
 	}
 	const hasTools = !!(tools && tools.length > 0);
 	const effortSpec = modelDef?.capabilities.thinkingEffort;
-	let thinkingFields: Pick<GLMChatRequest, 'thinking' | 'reasoning_effort'> = {};
+	let thinkingFields: Pick<QwenChatRequest, 'thinking' | 'enable_thinking' | 'reasoning_effort'> = {};
 	if (effortSpec) {
 		const effort = resolveEffort(options as EffortOptions, effortSpec);
+		// Qwen's native switch (`enable_thinking`) is sent alongside `thinking.type`, plus
+		// `reasoning_effort` when a non-none level is picked — mirroring the official CLI.
 		thinkingFields =
 			effort === 'none'
-				? { thinking: { type: 'disabled' } }
-				: { thinking: { type: 'enabled' }, reasoning_effort: effort };
+				? { thinking: { type: 'disabled' }, enable_thinking: false }
+				: { thinking: { type: 'enabled' }, enable_thinking: true, reasoning_effort: effort };
 	} else if (isThinkingModel) {
-		thinkingFields = { thinking: { type: resolveThinking(options) } };
+		const type = resolveThinking(options);
+		thinkingFields = { thinking: { type }, enable_thinking: type === 'enabled' };
 	}
-	const request: GLMChatRequest = {
+	const request: QwenChatRequest = {
 		model: getApiModelId(modelInfo.id),
 		messages: glmMessages,
 		stream: true,
@@ -77,6 +80,10 @@ export async function prepareChatRequest({
 	};
 	const totalRequestChars = countMessageChars(glmMessages);
 	return { client, request, totalRequestChars, isThinkingModel };
+}
+
+function isQwenFamilyModel(modelId: string): boolean {
+	return /^qwen/i.test(modelId) || modelId === 'auto';
 }
 
 type EffortOptions = vscode.ProvideLanguageModelChatResponseOptions & {

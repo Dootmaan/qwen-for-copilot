@@ -1,5 +1,5 @@
-import { ENDPOINTS, EXTERNAL_URLS, USAGE_HOSTS } from './consts';
-import { getApiMode, getBaseUrlOverride, getRegion } from './config';
+import { CONSOLE_RPC, ENDPOINTS, EXTERNAL_URLS, TOKEN_PLAN_USAGE_ENDPOINTS } from './consts';
+import { getApiMode, getBaseUrlOverride, getRegion, getTokenPlanStatsEndpointOverride } from './config';
 
 /** Trim and strip trailing slashes from a URL. */
 export function normalizeBaseUrl(url: string): string {
@@ -31,13 +31,41 @@ export function resolveKeyPageUrl(): string {
 	return china ? EXTERNAL_URLS.standardKeysChina : EXTERNAL_URLS.standardKeysInternational;
 }
 
+/** Resolve the preferred Token Plan usage endpoint (first candidate). */
+export function resolveTokenPlanStatsEndpoint(): string {
+	return resolveTokenPlanStatsEndpoints()[0];
+}
+
 /**
- * Host root for the usage + balance APIs. Both stations expose the same `/api/biz` and
- * `/api/monitor` paths and JSON shapes; only the host differs.
- *
- * Usage/balance paths are a DIFFERENT root than chat (`/api/paas/v4`), so this does not
- * derive from `resolveBaseUrl()`. Routing is by region: china → open.bigmodel.cn, else → api.z.ai.
+ * Token Plan usage endpoint candidates, in priority order:
+ * 1. cs-data gateway (official Qwen CLI path; needs the form-encoded envelope).
+ * 2. Alibaba Model Studio console RPC for the active region (authenticates with the API key).
+ * Explicit `tokenPlanStatsEndpoint` override replaces the whole list with one URL.
  */
-export function resolveUsageHost(): string {
-	return getRegion() === 'china' ? USAGE_HOSTS.china : USAGE_HOSTS.international;
+export function resolveTokenPlanStatsEndpoints(): string[] {
+	const override = getTokenPlanStatsEndpointOverride();
+	if (override) {
+		return [normalizeBaseUrl(override)];
+	}
+	const consoleRpc = getRegion() === 'china'
+		? TOKEN_PLAN_USAGE_ENDPOINTS.consoleRpcChina
+		: TOKEN_PLAN_USAGE_ENDPOINTS.consoleRpcInternational;
+	return Array.from(
+		new Set(
+			[
+				TOKEN_PLAN_USAGE_ENDPOINTS.csDataGateway,
+				consoleRpc,
+			].map((endpoint) => normalizeBaseUrl(endpoint)),
+		),
+	);
+}
+
+/** The console RPC `currentRegionId` for the active region. */
+export function resolveConsoleRpcRegionId(): string {
+	return getRegion() === 'china' ? CONSOLE_RPC.chinaRegion : CONSOLE_RPC.internationalRegion;
+}
+
+/** The console RPC `commodityCode` for the active region. */
+export function resolveConsoleRpcCommodityCode(): string {
+	return getRegion() === 'china' ? CONSOLE_RPC.commodityCodeChina : CONSOLE_RPC.commodityCodeInternational;
 }
