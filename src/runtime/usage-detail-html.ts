@@ -64,6 +64,7 @@ export interface UsagePanelStrings {
 	balanceGifted: string;
 	balanceFrozen: string;
 	balancePackages: string;
+	exhaustedNote: string;
 }
 
 /**

@@ -4,6 +4,13 @@
 
 All notable changes to Qwen Models for GitHub Copilot Chat are documented here.
 
+## 0.1.6
+
+- **Full Copilot agent/subagent harness support** - `options.toolMode` is now honored: `Required` maps to `tool_choice: "required"` (DashScope compatible-mode accepts it, including alongside thinking) and `Auto` maps to `tool_choice: "auto"`, so pinned `#tool:` requests and subagent-delegation tools work natively.
+- **Tool-name sanitization with bidirectional mapping** - VS Code tool names (including MCP and subagent tools with dots or other characters) are rewritten to DashScope-safe `[a-zA-Z0-9_-]` names (<=64 chars, collisions de-duplicated) for the wire, and the original names are restored on streamed tool calls so Copilot can invoke the real tools; history tool calls are replayed under the same wire names.
+- **Image tool results annotated** - since DashScope tool messages are text-only, image outputs (e.g. subagent screenshots) are replaced with a localized "[N image tool output omitted]" note (English + 简体中文) instead of being silently dropped.
+- **New harness contract doc** - docs/copilot-harness.md declares the full mapping from the Copilot harness onto the DashScope wire format.
+
 ## 0.1.5
 
 - **Rewrote the Token Plan usage query to the web console's real contract** - reverse-engineered the official `platform.qianwenai.com` Token Plan analytics bundle (`console-home/1.1.49/assets/analytics.js` + `shared.js`) and found the production wire shape: the gateway lives at `cs-data.qianwenai.com/data/api.json` (not `/cli/api.json`), takes `product=sfm_bailian&action=BroadScopeAspnGateway` in the query string, and the form-encoded body carries `params={Api,V,Data{cornerstoneParam}}&region`. The response exposes `per1WeekPercentage`/`per1WeekResetTime` (legacy 7-day plans) and `per1MonthPercentage`/`per1MonthResetTime` (current monthly plans, weekly limit removed 2026-09-22) as 0..1 ratios; both are now parsed into weekly + monthly status-bar metrics with reset times, mirroring the console's own normalizer.

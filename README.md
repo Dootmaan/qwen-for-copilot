@@ -7,6 +7,7 @@ Use Qwen Token Plan / DashScope models directly in Copilot Chat as a BYOK provid
 - Adds a `Qwen` provider in Copilot model picker
 - Supports Token Plan text models (Qwen/DeepSeek/GLM) with per-model context windows (e.g. 983K for qwen3.8/3.7 flagships, 1M for GLM 5.x) and auto-discovery of model IDs from `/models` that inherits the built-in specs
 - Thinking effort picker (none/high/max) for thinking-capable models; requests send Qwen's native `enable_thinking` switch
+- 🤖 **Native Copilot agent & subagent harness** — the full agent toolset (built-ins, MCP, and subagent-delegation tools) is forwarded to Qwen with name sanitization and back-mapping, and the harness `toolMode` contract (`Auto`/`Required`) is honored. See [docs/copilot-harness.md](docs/copilot-harness.md).
 - Bilingual UI (English + 简体中文) for commands, settings, and usage panel
 - Token Plan usage status bar + detail panel: 5-hour / weekly / monthly quota with reset times and plan name
 - Custom endpoint and custom model support

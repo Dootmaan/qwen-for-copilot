@@ -44,6 +44,8 @@ const en: Record<string, string> = {
 	// Request limits
 	'request.toolsLimitExceeded':
 		'Qwen supports at most {0} tools in one request, but this request has {1}. Use VS Code Configure Tools to disable tools you rarely use.',
+	'request.imageToolResultOmitted':
+		'[{0} image tool output omitted — Qwen tool results are text-only]',
 	'request.retry.rateLimited': 'Qwen is rate limited. Retrying in {0}s ({1}/{2}).',
 	'request.retry.busy': 'Qwen is busy. Retrying in {0}s ({1}/{2}).',
 
@@ -123,6 +125,7 @@ const en: Record<string, string> = {
 	'usage.balance.gifted': 'Gifted',
 	'usage.balance.frozen': 'Frozen',
 	'usage.balance.packages': 'Token Packages',
+	'usage.balance.exhausted': 'Balance exhausted — top up to keep using Qwen.',
 };
 
 const zh: Record<string, string> = {
@@ -162,6 +165,8 @@ const zh: Record<string, string> = {
 
 	'request.toolsLimitExceeded':
 		'Qwen 单次请求最多支持 {0} 个工具，但本次请求包含 {1} 个。请使用 VS Code 的“配置工具”关闭不常用的工具。',
+	'request.imageToolResultOmitted':
+		'［已省略 {0} 个图片工具输出——Qwen 工具结果仅支持文本］',
 	'request.retry.rateLimited': 'Qwen 请求过于频繁。将在 {0} 秒后重试（{1}/{2}）。',
 	'request.retry.busy': 'Qwen 服务繁忙。将在 {0} 秒后重试（{1}/{2}）。',
 
@@ -225,6 +230,7 @@ const zh: Record<string, string> = {
 	'usage.balance.gifted': '赠送金额',
 	'usage.balance.frozen': '冻结金额',
 	'usage.balance.packages': '资源包',
+	'usage.balance.exhausted': '余额已耗尽——请充值后继续使用。',
 };
 
 function isZh(): boolean {

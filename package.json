@@ -3,7 +3,7 @@
 	"displayName": "Qwen AI for GitHub Copilot Chat",
 	"description": "Bring Qwen Token Plan and DashScope models into GitHub Copilot Chat with bilingual UX and quota visibility.",
 	"icon": "resources/icon.png",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"publisher": "Dootmaan",
 	"license": "MIT",
 	"repository": {
@@ -289,13 +289,13 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@types/node": "^20.0.0",
-		"@types/vscode": "^1.116.0",
-		"@vscode/vsce": "^3.2.0",
-		"eslint": "^10.5.0",
-		"globals": "^17.7.0",
-		"typescript": "^5.6.0",
-		"typescript-eslint": "^8.62.0",
-		"vitest": "^4.1.9"
+		"@types/node": "^20.19.43",
+		"@types/vscode": "1.144.0",
+		"@vscode/vsce": "^3.9.2",
+		"eslint": "^10.13.0",
+		"globals": "^17.13.0",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.72.1",
+		"vitest": "^4.1.12"
 	}
 }

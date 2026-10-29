@@ -21,6 +21,7 @@ Key facts:
 ## Documentation
 
 - [README](README.md): installation, features, settings, and the model table.
+- [Copilot agent harness contract](docs/copilot-harness.md): how `options.tools`/`toolMode` map onto the DashScope wire format (name sanitization + back-mapping, Required tool mode, image tool-result annotation).
 - [Models and settings](README.md#models): which Qwen models are available per API mode, and all configuration options.
 - [Coding Plan vs Standard API](README.md#coding-plan-vs-standard-api): endpoint routing and when to use each.
 - [Changelog](CHANGELOG.md): release history.

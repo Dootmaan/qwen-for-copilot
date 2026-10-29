@@ -13,7 +13,7 @@ import type {
 	ThinkingEffortSpec,
 	ThinkingMode,
 } from '../types';
-import { convertMessages, convertTools, countMessageChars } from './convert';
+import { convertMessages, convertTools, countMessageChars, sanitizeToolName } from './convert';
 
 interface PrepareChatRequestArgs {
 	authManager: IAuthManager;
@@ -29,6 +29,8 @@ export interface PreparedChatRequest {
 	request: QwenChatRequest;
 	totalRequestChars: number;
 	isThinkingModel: boolean;
+	/** wire (sanitized) tool name → original VS Code tool name, used to restore names on streamed calls. */
+	toolNameMap: Map<string, string>;
 }
 
 /** Build the Qwen client and request body for one Copilot Chat turn. */
@@ -49,12 +51,21 @@ export async function prepareChatRequest({
 	const isThinkingModel = modelDef?.capabilities.thinking === true && isQwenFamilyModel(modelInfo.id);
 	const toolCalling = modelInfo.capabilities.toolCalling ?? modelDef?.capabilities.toolCalling ?? false;
 	const toolLimit = typeof toolCalling === 'number' ? toolCalling : DEFAULT_TOOLS_LIMIT;
-	const glmMessages = convertMessages(messages, isThinkingModel);
-	const tools: QwenTool[] | undefined = toolCalling ? convertTools(options.tools ?? []) : undefined;
+	const converted = toolCalling ? convertTools(options.tools ?? []) : undefined;
+	const tools: QwenTool[] | undefined = converted?.tools;
 	if (tools && tools.length > toolLimit) {
 		throw new Error(t('request.toolsLimitExceeded', String(toolLimit), String(tools.length)));
 	}
 	const hasTools = !!(tools && tools.length > 0);
+	/**
+	 * Copilot harness contract: `Required` means the model must call one of the provided tools
+	 * (e.g. when the user pins `#tool:...`). DashScope's OpenAI-compatible mode accepts
+	 * `tool_choice: "required"`, so Required turns are forwarded verbatim.
+	 */
+	const requiresToolCall =
+		hasTools && options.toolMode === vscode.LanguageModelChatToolMode.Required;
+	const wireNames = converted?.wireNames ?? new Map<string, string>();
+	const glmMessages = convertMessages(messages, isThinkingModel, (name) => wireNames.get(name) ?? sanitizeToolName(name));
 	const effortSpec = modelDef?.capabilities.thinkingEffort;
 	let thinkingFields: Pick<QwenChatRequest, 'thinking' | 'enable_thinking' | 'reasoning_effort'> = {};
 	if (effortSpec) {
@@ -74,12 +85,12 @@ export async function prepareChatRequest({
 		messages: glmMessages,
 		stream: true,
 		tools: hasTools ? tools : undefined,
-		tool_choice: hasTools ? 'auto' : undefined,
+		tool_choice: hasTools ? (requiresToolCall ? 'required' : 'auto') : undefined,
 		max_tokens: getMaxTokens(),
 		...thinkingFields,
 	};
 	const totalRequestChars = countMessageChars(glmMessages);
-	return { client, request, totalRequestChars, isThinkingModel };
+	return { client, request, totalRequestChars, isThinkingModel, toolNameMap: converted?.nameMap ?? new Map<string, string>() };
 }
 
 function isQwenFamilyModel(modelId: string): boolean {

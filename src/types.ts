@@ -143,7 +143,7 @@ export interface QwenChatRequest {
 	messages: QwenMessage[];
 	stream: boolean;
 	tools?: QwenTool[];
-	tool_choice?: 'auto' | 'none';
+	tool_choice?: 'auto' | 'none' | 'required';
 	max_tokens?: number;
 	thinking?: { type: ThinkingMode };
 	/** Qwen's native thinking toggle (DashScope `enable_thinking`); kept in sync with `thinking`. */

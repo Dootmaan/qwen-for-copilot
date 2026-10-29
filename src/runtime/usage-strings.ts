@@ -41,5 +41,6 @@ export function usagePanelStrings(): UsagePanelStrings {
 		balanceGifted: t('usage.balance.gifted'),
 		balanceFrozen: t('usage.balance.frozen'),
 		balancePackages: t('usage.balance.packages'),
+		exhaustedNote: t('usage.balance.exhausted'),
 	};
 }

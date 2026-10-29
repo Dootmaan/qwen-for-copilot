@@ -1,3 +1,6 @@
 allowBuilds:
   '@vscode/vsce-sign': true
   keytar: true
+minimumReleaseAgeExclude:
+  - '@types/vscode@1.144.0'
+overrides: { "@types/vscode@>=1.116.0 <2.0.0-0": "1.144.0" }
