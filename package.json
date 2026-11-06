@@ -292,7 +292,7 @@
 		"@types/node": "^20.19.43",
 		"@types/vscode": "1.144.0",
 		"@vscode/vsce": "^3.9.2",
-		"eslint": "^10.13.0",
+		"eslint": "^10.14.0",
 		"globals": "^17.13.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.72.1",
